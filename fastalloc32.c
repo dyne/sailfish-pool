@@ -62,6 +62,11 @@ static inline size_t align_up(size_t size, size_t alignment) {
   return (size + alignment - 1) & ~(alignment - 1);
 }
 
+static inline void secure_zero(void *ptr, size_t size) {
+    volatile unsigned char *p = ptr;
+    while (size--) *p++ = 0;
+}
+
 static inline void pool_init(Pool *pool, size_t initial_size) {
   pool->data = (unsigned char *)malloc(initial_size);
   pool->total_blocks = initial_size / BLOCK_SIZE;
@@ -99,20 +104,21 @@ fastalloc32_mm *fastalloc32_create() {
 }
 
 void fastalloc32_destroy(fastalloc32_mm *manager) {
-    // Free large allocations
-    LargeAllocation *current = manager->large_allocations;
-    while (current) {
-        LargeAllocation *next = current->next;
-        free(current->ptr);
-        free(current);
-        current = next;
-    }
+  // Free large allocations
+  LargeAllocation *current = manager->large_allocations;
+  while (current) {
+    LargeAllocation *next = current->next;
+    secure_zero(current->ptr, current->size);
+    free(current->ptr);
+    free(current);
+    current = next;
+  }
 
-    // Free pool memory
-    free(manager->pool.data);
-    free(manager->pool.free_list);
-    // Free the main context
-    free(manager);
+  // Free pool memory
+  free(manager->pool.data);
+  free(manager->pool.free_list);
+  // Free context
+  free(manager);
 }
 
 void *fastalloc32_malloc(fastalloc32_mm *manager, size_t size) {
@@ -152,12 +158,15 @@ void fastalloc32_free(fastalloc32_mm *manager, void *ptr) {
       if ((*curr)->ptr == ptr) {
         LargeAllocation *to_free = *curr;
         *curr = (*curr)->next;
+        secure_zero(to_free->ptr, to_free->size);
         free(to_free->ptr);
         free(to_free);
         return;
       }
       curr = &(*curr)->next;
     }
+    // If we reach here, ptr was not allocated by this memory manager
+    free(ptr);
   }
 }
 

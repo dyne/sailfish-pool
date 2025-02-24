@@ -18,7 +18,7 @@ in place of the standard C library memory allocation functions.
 - **Large Allocation Handling**: Uses a separate mechanism for managing large allocations when the pool is exhausted, minimizing system calls.
 - **Fallback Mechanism**: Falls back to `malloc()` for allocations when the pool is exhausted, ensuring the allocator can continue to function.
 - **Reallocation Support**: Supports `realloc()` for both pool-allocated and large-allocated memory blocks, handling transitions between different allocation strategies.
-- **Memory Leak Detection**: Includes a stress test to check for memory leaks and ensure the correctness of the memory manager.
+- **Secure Zeroing**: Ensured all memory is zeroed out before freeing memory, to protect sensitive information.
 
 ## Usage
 
