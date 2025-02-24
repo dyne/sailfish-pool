@@ -33,6 +33,7 @@ There is no need for a header, just declare some externs:
 ```c
 extern struct fastalloc32_mm;
 extern void fastalloc32_init(fastalloc32_mm *manager);
+extern void fastalloc32_destroy(fastalloc32_mm *manager);
 extern void *fastalloc32_malloc(fastalloc32_mm *manager, size_t size);
 extern void *fastalloc32_realloc(fastalloc32_mm *manager, void *ptr, size_t size);
 extern void fastalloc32_free(fastalloc32_mm *manager, void *ptr);
