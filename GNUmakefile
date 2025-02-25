@@ -31,7 +31,8 @@ wasm:
 	$(info Build Web Assembly target with EMSCRIPTEN and run test.)
 	@${EMSDK}/upstream/emscripten/emcc \
 		${emsdk_cflags} -DFASTALLOC32_TEST fastalloc32.c -o fastalloc32.js ${emsdk_ldflags}
-	@node -e "require('./fastalloc32.js')()"
+	@time -f "Command executed in:\n\tUser time: %U seconds\n\tSystem time: %S seconds\n\tElapsed (real) time: %E" \
+		node -e "require('./fastalloc32.js')()"
 
 clean:
 	@rm -f *.o fastalloc32_test
