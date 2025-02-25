@@ -130,8 +130,8 @@ void *fastalloc32_create() {
 }
 
 // Destroy memory manager
-void fastalloc32_destroy(void *mm) {
-  fastalloc32_mm *manager = arg_manager(mm);
+void fastalloc32_destroy(void *restrict mm) {
+  fastalloc32_mm *restrict manager = arg_manager(mm);
 
   // Free large allocations in the hash table
   for (size_t i = 0; i < HASH_TABLE_SIZE; ++i) {
@@ -154,8 +154,8 @@ void fastalloc32_destroy(void *mm) {
 }
 
 // Allocate memory
-void *fastalloc32_malloc(void *mm, size_t size) {
-  fastalloc32_mm *manager = arg_manager(mm);
+void *fastalloc32_malloc(void *restrict mm, size_t size) {
+  fastalloc32_mm *restrict manager = arg_manager(mm);
   size = align_up(size, ALIGNMENT);
 
   if (size <= BLOCK_SIZE) {
@@ -189,8 +189,8 @@ void *fastalloc32_malloc(void *mm, size_t size) {
 }
 
 // Free memory
-void fastalloc32_free(void *mm, void *ptr) {
-  fastalloc32_mm *manager = arg_manager(mm);
+void fastalloc32_free(void *restrict mm, void *ptr) {
+  fastalloc32_mm *restrict manager = arg_manager(mm);
   if (ptr == NULL) return; // Freeing NULL is a no-op
 
   if ((uintptr_t)ptr >= (uintptr_t)manager->pool.data
@@ -217,8 +217,8 @@ void fastalloc32_free(void *mm, void *ptr) {
 }
 
 // Reallocate memory
-void *fastalloc32_realloc(void *mm, void *ptr, size_t size) {
-  fastalloc32_mm *manager = arg_manager(mm);
+void *fastalloc32_realloc(void *restrict mm, void *ptr, size_t size) {
+  fastalloc32_mm *restrict manager = arg_manager(mm);
   size = align_up(size, ALIGNMENT);
 
   if (ptr == NULL) {
@@ -266,8 +266,8 @@ void *fastalloc32_realloc(void *mm, void *ptr, size_t size) {
 }
 
 // Debug function to print memory manager state
-void fastalloc32_debug(void *mm) {
-  fastalloc32_mm *manager = arg_manager(mm);
+void fastalloc32_debug(void *restrict mm) {
+  fastalloc32_mm *restrict manager = arg_manager(mm);
   printf("Pool free blocks: %zu/%zu\n",
          manager->pool.free_count, manager->pool.total_blocks);
 
