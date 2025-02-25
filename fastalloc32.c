@@ -70,7 +70,8 @@ static inline fastalloc32_mm *arg_manager(void *mm) {
 static inline void pool_init(Pool *pool, size_t initial_size) {
   pool->data = (unsigned char *)malloc(initial_size);
   pool->total_blocks = initial_size / BLOCK_SIZE;
-  pool->free_list = (unsigned char **)malloc(pool->total_blocks * sizeof(unsigned char *));
+  pool->free_list = (unsigned char **)malloc
+    (pool->total_blocks * sizeof(unsigned char *));
   pool->free_count = pool->total_blocks;
   for (size_t i = 0; i < pool->total_blocks; ++i) {
     pool->free_list[i] = &pool->data[i * BLOCK_SIZE];
@@ -129,7 +130,8 @@ void *fastalloc32_malloc(void *mm, size_t size) {
     return NULL; // malloc failed
   }
 
-  LargeAllocation *large_alloc = (LargeAllocation *)malloc(sizeof(LargeAllocation));
+  LargeAllocation *large_alloc =
+    (LargeAllocation *)malloc(sizeof(LargeAllocation));
   if (large_alloc == NULL) {
     free(ptr);
     return NULL; // malloc failed
@@ -145,7 +147,9 @@ void *fastalloc32_malloc(void *mm, size_t size) {
 
 void fastalloc32_free(void *mm, void *ptr) {
   fastalloc32_mm *manager = arg_manager(mm);;
-  if (ptr >= (void *)manager->pool.data && ptr < (void *)(manager->pool.data + manager->pool.total_blocks * BLOCK_SIZE)) {
+  if (ptr >= (void *)manager->pool.data
+      && ptr < (void *)(manager->pool.data
+                        + manager->pool.total_blocks * BLOCK_SIZE)) {
     pool_free(&manager->pool, ptr);
   } else {
     LargeAllocation **curr = &manager->large_allocations;
@@ -177,7 +181,9 @@ void *fastalloc32_realloc(void *mm, void *ptr, size_t size) {
     return NULL;
   }
 
-  if (ptr >= (void *)manager->pool.data && ptr < (void *)(manager->pool.data + manager->pool.total_blocks * BLOCK_SIZE)) {
+  if (ptr >= (void *)manager->pool.data
+      && ptr < (void *)(manager->pool.data
+                        + manager->pool.total_blocks * BLOCK_SIZE)) {
     if (size <= BLOCK_SIZE) {
       return ptr; // No need to reallocate
     } else {
@@ -226,7 +232,6 @@ int main(int argc, char **argv) {
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
     pointers[i] = fastalloc32_malloc(manager, size);
-    //fprintf(stderr,"%u alloc: %p\n",i,pointers[i]);
     assert(pointers[i] != NULL); // Ensure allocation was successful
   }
 
