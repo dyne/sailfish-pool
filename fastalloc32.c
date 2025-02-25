@@ -31,20 +31,16 @@
 // #define POOL_SIZE 1024
 // #define BLOCK_SIZE 32
 // #define ALIGNMENT 8
-// #define CACHE_SIZE 16
 
-#define POOL_SIZE 8192
+#define POOL_SIZE (1024*4*128)
 #define BLOCK_SIZE 128
-#define ALIGNMENT 8
-#define CACHE_SIZE 512
+#define ALIGNMENT 4
 
 typedef struct Pool {
   unsigned char *data;
   unsigned char **free_list;
   size_t free_count;
   size_t total_blocks;
-  unsigned char *cache[CACHE_SIZE];
-  size_t cache_count;
 } Pool;
 
 typedef struct LargeAllocation {
@@ -76,16 +72,12 @@ static inline void pool_init(Pool *pool, size_t initial_size) {
   pool->total_blocks = initial_size / BLOCK_SIZE;
   pool->free_list = (unsigned char **)malloc(pool->total_blocks * sizeof(unsigned char *));
   pool->free_count = pool->total_blocks;
-  pool->cache_count = 0;
   for (size_t i = 0; i < pool->total_blocks; ++i) {
     pool->free_list[i] = &pool->data[i * BLOCK_SIZE];
   }
 }
 
 static inline void *pool_alloc(Pool *pool) {
-  if (pool->cache_count > 0) {
-    return pool->cache[--pool->cache_count];
-  }
   if (pool->free_count == 0) {
     return NULL; // Pool exhausted
   }
@@ -93,11 +85,7 @@ static inline void *pool_alloc(Pool *pool) {
 }
 
 static inline void pool_free(Pool *pool, void *ptr) {
-  if (pool->cache_count < CACHE_SIZE) {
-    pool->cache[pool->cache_count++] = (unsigned char *)ptr;
-  } else {
-    pool->free_list[pool->free_count++] = (unsigned char *)ptr;
-  }
+  pool->free_list[pool->free_count++] = (unsigned char *)ptr;
 }
 
 void *fastalloc32_create() {
