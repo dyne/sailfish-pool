@@ -1,4 +1,3 @@
-
 /* SPDX-FileCopyrightText: 2025 Dyne.org foundation
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
@@ -27,81 +26,110 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 
-// #define POOL_SIZE 1024
-// #define BLOCK_SIZE 32
-// #define ALIGNMENT 8
-
-#define POOL_SIZE (1024*4*128)
+// Configuration
+#define POOL_SIZE (1024 * 4 * 128)
 #define BLOCK_SIZE 128
 #define ALIGNMENT 4
 
-typedef struct Pool {
+// Ensure BLOCK_SIZE and ALIGNMENT are powers of two
+static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
+static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of two");
+
+// Memory pool structure
+typedef struct pool {
   unsigned char *data;
   unsigned char **free_list;
   size_t free_count;
   size_t total_blocks;
-} Pool;
+} pool;
 
-typedef struct LargeAllocation {
+// Large allocation structure
+typedef struct large_allocation {
   void *ptr;
   size_t size;
-  struct LargeAllocation *next;
-} LargeAllocation;
+  struct large_allocation *next;
+} large_allocation;
 
+// Memory manager structure
 typedef struct fastalloc32_mm {
-  Pool pool;
-  LargeAllocation *large_allocations;
+  pool pool;
+  large_allocation *large_allocations;
 } fastalloc32_mm;
 
+// Utility functions
 static inline size_t align_up(size_t size, size_t alignment) {
   return (size + alignment - 1) & ~(alignment - 1);
 }
 
 static inline void secure_zero(void *ptr, size_t size) {
-    volatile unsigned char *p = ptr;
-    while (size--) *p++ = 0;
+  volatile unsigned char *p = ptr;
+  while (size--) *p++ = 0;
 }
 
 static inline fastalloc32_mm *arg_manager(void *mm) {
-  return (fastalloc32_mm*)mm;
+  return (fastalloc32_mm *)mm;
 }
 
-static inline void pool_init(Pool *pool, size_t initial_size) {
+// Pool initialization
+static inline void pool_init(pool *pool, size_t initial_size) {
   pool->data = (unsigned char *)malloc(initial_size);
+  if (pool->data == NULL) {
+    fprintf(stderr, "Failed to allocate pool memory\n");
+    exit(EXIT_FAILURE);
+  }
+
   pool->total_blocks = initial_size / BLOCK_SIZE;
-  pool->free_list = (unsigned char **)malloc
-    (pool->total_blocks * sizeof(unsigned char *));
+  pool->free_list = (unsigned char **)
+    calloc(pool->total_blocks, sizeof(unsigned char *));
+  if (pool->free_list == NULL) {
+    free(pool->data);
+    fprintf(stderr, "Failed to allocate free list\n");
+    exit(EXIT_FAILURE);
+  }
+
   pool->free_count = pool->total_blocks;
   for (size_t i = 0; i < pool->total_blocks; ++i) {
     pool->free_list[i] = &pool->data[i * BLOCK_SIZE];
   }
 }
 
-static inline void *pool_alloc(Pool *pool) {
+// Pool allocation
+static inline void *pool_alloc(pool *pool) {
   if (pool->free_count == 0) {
     return NULL; // Pool exhausted
   }
   return pool->free_list[--pool->free_count];
 }
 
-static inline void pool_free(Pool *pool, void *ptr) {
+// Pool deallocation
+static inline void pool_free(pool *pool, void *ptr) {
   pool->free_list[pool->free_count++] = (unsigned char *)ptr;
 }
 
+// Create memory manager
 void *fastalloc32_create() {
-  fastalloc32_mm *manager = malloc(sizeof(fastalloc32_mm));
+  fastalloc32_mm *manager =
+    (fastalloc32_mm *)malloc(sizeof(fastalloc32_mm));
+  if (manager == NULL) {
+    fprintf(stderr, "Failed to allocate memory manager\n");
+    return NULL;
+  }
+
   pool_init(&manager->pool, POOL_SIZE);
   manager->large_allocations = NULL;
-  return (void*)manager;
+  return (void *)manager;
 }
 
+// Destroy memory manager
 void fastalloc32_destroy(void *mm) {
-  fastalloc32_mm *manager = arg_manager(mm);;
+  fastalloc32_mm *manager = arg_manager(mm);
+
   // Free large allocations
-  LargeAllocation *current = manager->large_allocations;
+  large_allocation *current = manager->large_allocations;
   while (current) {
-    LargeAllocation *next = current->next;
+    large_allocation *next = current->next;
     secure_zero(current->ptr, current->size);
     free(current->ptr);
     free(current);
@@ -111,13 +139,16 @@ void fastalloc32_destroy(void *mm) {
   // Free pool memory
   free(manager->pool.data);
   free(manager->pool.free_list);
-  // Free context
+
+  // Free manager
   free(manager);
 }
 
+// Allocate memory
 void *fastalloc32_malloc(void *mm, size_t size) {
-  fastalloc32_mm *manager = arg_manager(mm);;
+  fastalloc32_mm *manager = arg_manager(mm);
   size = align_up(size, ALIGNMENT);
+
   if (size <= BLOCK_SIZE) {
     void *ptr = pool_alloc(&manager->pool);
     if (ptr != NULL) {
@@ -130,8 +161,8 @@ void *fastalloc32_malloc(void *mm, size_t size) {
     return NULL; // malloc failed
   }
 
-  LargeAllocation *large_alloc =
-    (LargeAllocation *)malloc(sizeof(LargeAllocation));
+  large_allocation *large_alloc =
+    (large_allocation *)malloc(sizeof(large_allocation));
   if (large_alloc == NULL) {
     free(ptr);
     return NULL; // malloc failed
@@ -145,17 +176,20 @@ void *fastalloc32_malloc(void *mm, size_t size) {
   return ptr;
 }
 
+// Free memory
 void fastalloc32_free(void *mm, void *ptr) {
-  fastalloc32_mm *manager = arg_manager(mm);;
-  if (ptr >= (void *)manager->pool.data
-      && ptr < (void *)(manager->pool.data
-                        + manager->pool.total_blocks * BLOCK_SIZE)) {
+  fastalloc32_mm *manager = arg_manager(mm);
+  if (ptr == NULL) return; // Freeing NULL is a no-op
+  uintptr_t uip = (uintptr_t)ptr;
+  if (uip >= (uintptr_t)manager->pool.data
+      && uip < (uintptr_t)(manager->pool.data
+                           + manager->pool.total_blocks * BLOCK_SIZE)) {
     pool_free(&manager->pool, ptr);
   } else {
-    LargeAllocation **curr = &manager->large_allocations;
+    large_allocation **curr = &manager->large_allocations;
     while (*curr) {
       if ((*curr)->ptr == ptr) {
-        LargeAllocation *to_free = *curr;
+        large_allocation *to_free = *curr;
         *curr = (*curr)->next;
         secure_zero(to_free->ptr, to_free->size);
         free(to_free->ptr);
@@ -170,41 +204,43 @@ void fastalloc32_free(void *mm, void *ptr) {
 }
 
 void *fastalloc32_realloc(void *mm, void *ptr, size_t size) {
-  fastalloc32_mm *manager = arg_manager(mm);;
+  fastalloc32_mm *manager = arg_manager(mm);
   size = align_up(size, ALIGNMENT);
+
   if (ptr == NULL) {
     return fastalloc32_malloc(manager, size);
   }
+  uintptr_t uip = (uintptr_t)ptr;
 
   if (size == 0) {
     fastalloc32_free(manager, ptr);
     return NULL;
   }
 
-  if (ptr >= (void *)manager->pool.data
-      && ptr < (void *)(manager->pool.data
-                        + manager->pool.total_blocks * BLOCK_SIZE)) {
+  if (uip >= (uintptr_t)manager->pool.data
+      && uip < (uintptr_t)(manager->pool.data
+                           + manager->pool.total_blocks * BLOCK_SIZE)) {
     if (size <= BLOCK_SIZE) {
       return ptr; // No need to reallocate
     } else {
       void *new_ptr = fastalloc32_malloc(manager, size);
       if (new_ptr) {
-        memcpy(new_ptr, ptr, BLOCK_SIZE);
+        memcpy(new_ptr, ptr, BLOCK_SIZE); // Copy only BLOCK_SIZE bytes
         pool_free(&manager->pool, ptr);
       }
       return new_ptr;
     }
   } else {
-    LargeAllocation **curr = &manager->large_allocations;
+    large_allocation **curr = &manager->large_allocations;
     while (*curr) {
       if ((*curr)->ptr == ptr) {
-        void *new_ptr = realloc(ptr, size);
-        if (new_ptr == NULL) {
-          return NULL; // realloc failed
+        size_t copy_size = ((*curr)->size < size) ?
+          (*curr)->size : size; // Copy the smaller of the two sizes
+        void *new_ptr = fastalloc32_malloc(manager, size);
+        if (new_ptr) {
+          memcpy(new_ptr, ptr, copy_size); // Copy only the minimum size
+          fastalloc32_free(manager, ptr);
         }
-
-        (*curr)->ptr = new_ptr;
-        (*curr)->size = size;
         return new_ptr;
       }
       curr = &(*curr)->next;
@@ -212,6 +248,20 @@ void *fastalloc32_realloc(void *mm, void *ptr, size_t size) {
 
     // Handle realloc for memory allocated outside the manager's control
     return realloc(ptr, size);
+  }
+}
+
+// Debug function to print memory manager state
+void fastalloc32_debug(void *mm) {
+  fastalloc32_mm *manager = arg_manager(mm);
+  printf("Pool free blocks: %zu/%zu\n",
+         manager->pool.free_count, manager->pool.total_blocks);
+
+  large_allocation *current = manager->large_allocations;
+  while (current) {
+    printf("Large allocation: %p, size: %zu\n",
+           current->ptr, current->size);
+    current = current->next;
   }
 }
 
