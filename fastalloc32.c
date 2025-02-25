@@ -29,8 +29,8 @@
 #include <assert.h>
 
 // Configuration
-#define POOL_SIZE (1024 * 4 * 128)
 #define BLOCK_SIZE 128
+#define POOL_SIZE (8192 * BLOCK_SIZE) // one MiB
 #define ALIGNMENT 4
 #define HASH_TABLE_SIZE 1024 // Number of buckets in the hash table
 
