@@ -67,6 +67,10 @@ static inline void secure_zero(void *ptr, size_t size) {
     while (size--) *p++ = 0;
 }
 
+static inline fastalloc32_mm *arg_manager(void *mm) {
+  return (fastalloc32_mm*)mm;
+}
+
 static inline void pool_init(Pool *pool, size_t initial_size) {
   pool->data = (unsigned char *)malloc(initial_size);
   pool->total_blocks = initial_size / BLOCK_SIZE;
@@ -96,14 +100,15 @@ static inline void pool_free(Pool *pool, void *ptr) {
   }
 }
 
-fastalloc32_mm *fastalloc32_create() {
+void *fastalloc32_create() {
   fastalloc32_mm *manager = malloc(sizeof(fastalloc32_mm));
   pool_init(&manager->pool, POOL_SIZE);
   manager->large_allocations = NULL;
-  return(manager);
+  return (void*)manager;
 }
 
-void fastalloc32_destroy(fastalloc32_mm *manager) {
+void fastalloc32_destroy(void *mm) {
+  fastalloc32_mm *manager = arg_manager(mm);;
   // Free large allocations
   LargeAllocation *current = manager->large_allocations;
   while (current) {
@@ -121,7 +126,8 @@ void fastalloc32_destroy(fastalloc32_mm *manager) {
   free(manager);
 }
 
-void *fastalloc32_malloc(fastalloc32_mm *manager, size_t size) {
+void *fastalloc32_malloc(void *mm, size_t size) {
+  fastalloc32_mm *manager = arg_manager(mm);;
   size = align_up(size, ALIGNMENT);
   if (size <= BLOCK_SIZE) {
     void *ptr = pool_alloc(&manager->pool);
@@ -149,7 +155,8 @@ void *fastalloc32_malloc(fastalloc32_mm *manager, size_t size) {
   return ptr;
 }
 
-void fastalloc32_free(fastalloc32_mm *manager, void *ptr) {
+void fastalloc32_free(void *mm, void *ptr) {
+  fastalloc32_mm *manager = arg_manager(mm);;
   if (ptr >= (void *)manager->pool.data && ptr < (void *)(manager->pool.data + manager->pool.total_blocks * BLOCK_SIZE)) {
     pool_free(&manager->pool, ptr);
   } else {
@@ -170,7 +177,8 @@ void fastalloc32_free(fastalloc32_mm *manager, void *ptr) {
   }
 }
 
-void *fastalloc32_realloc(fastalloc32_mm *manager, void *ptr, size_t size) {
+void *fastalloc32_realloc(void *mm, void *ptr, size_t size) {
+  fastalloc32_mm *manager = arg_manager(mm);;
   size = align_up(size, ALIGNMENT);
   if (ptr == NULL) {
     return fastalloc32_malloc(manager, size);
