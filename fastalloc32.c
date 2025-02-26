@@ -30,6 +30,8 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#else
+#include <sys/mman.h>
 #endif
 
 // Configuration
@@ -54,6 +56,7 @@ typedef struct pool {
   unsigned char *free_list; // Pointer to the first free block
   size_t free_count;
   size_t total_blocks;
+  size_t bytesize;
 } pool;
 
 // Large allocation structure
@@ -116,14 +119,21 @@ static inline void sys_free(void *ptr) {
 }
 
 // Pool initialization
-static inline void pool_init(pool *pool, size_t initial_size) {
-	pool->data = (unsigned char *)sys_malloc(initial_size);
-  if (pool->data == NULL) {
+static inline void pool_init(pool *pool, size_t bytesize) {
+#if defined(__EMSCRIPTEN__)
+	pool->data = (unsigned char *)sys_malloc(bytesize);
+#else
+  pool->data = mmap(NULL, bytesize, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
+                    , -1, 0);
+#endif
+
+  if (pool->data == NULL || pool->data == MAP_FAILED) {
     fprintf(stderr, "Failed to allocate pool memory\n");
     exit(EXIT_FAILURE);
   }
-
-  pool->total_blocks = initial_size / BLOCK_SIZE;
+  pool->bytesize = bytesize;
+  pool->total_blocks = bytesize / BLOCK_SIZE;
   // Initialize the embedded free list
   pool->free_list = pool->data;
   for (size_t i = 0; i < pool->total_blocks - 1; ++i) {
@@ -186,7 +196,11 @@ void fastalloc32_destroy(void *restrict mm) {
   }
 
   // Free pool memory
+#if defined(__EMSCRIPTEN__)
   sys_free(manager->pool.data);
+#else
+  munmap(manager->pool.data, manager->pool.bytesize);
+#endif
 
   // Free manager
   sys_free(manager);
