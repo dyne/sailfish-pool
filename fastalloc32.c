@@ -51,7 +51,7 @@ static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of 
 // Memory pool structure
 typedef struct pool {
   unsigned char *data;
-  unsigned char **free_list;
+  unsigned char *free_list; // Pointer to the first free block
   size_t free_count;
   size_t total_blocks;
 } pool;
@@ -124,31 +124,34 @@ static inline void pool_init(pool *pool, size_t initial_size) {
   }
 
   pool->total_blocks = initial_size / BLOCK_SIZE;
-  pool->free_list = (unsigned char **)
-    sys_calloc(pool->total_blocks, sizeof(unsigned char *));
-  if (pool->free_list == NULL) {
-    sys_free(pool->data);
-    fprintf(stderr, "Failed to allocate free list\n");
-    exit(EXIT_FAILURE);
+  // Initialize the embedded free list
+  pool->free_list = pool->data;
+  for (size_t i = 0; i < pool->total_blocks - 1; ++i) {
+    *(unsigned char **)(pool->data + i * BLOCK_SIZE) =
+      pool->data + (i + 1) * BLOCK_SIZE;
   }
-
-  pool->free_count = pool->total_blocks;
-  for (size_t i = 0; i < pool->total_blocks; ++i) {
-    pool->free_list[i] = &pool->data[i * BLOCK_SIZE];
-  }
+  *(unsigned char **)
+    (pool->data + (pool->total_blocks - 1)
+     * BLOCK_SIZE) = NULL;
 }
 
 // Pool allocation
 static inline void *pool_alloc(pool *pool) {
-  if (pool->free_count == 0) {
+  if (pool->free_list == NULL) {
     return NULL; // Pool exhausted
   }
-  return pool->free_list[--pool->free_count];
+
+  // Remove the first block from the free list
+  unsigned char *block = pool->free_list;
+  pool->free_list = *(unsigned char **)block;
+  return block;
 }
 
 // Pool deallocation
-static inline void pool_free(pool *pool, ptr_t *ptr) {
-  pool->free_list[pool->free_count++] = (unsigned char *)ptr;
+static inline void pool_free(pool *pool, void *ptr) {
+  // Add the block back to the free list
+  *(unsigned char **)ptr = pool->free_list;
+  pool->free_list = (unsigned char *)ptr;
 }
 
 // Create memory manager
@@ -184,7 +187,6 @@ void fastalloc32_destroy(void *restrict mm) {
 
   // Free pool memory
   sys_free(manager->pool.data);
-  sys_free(manager->pool.free_list);
 
   // Free manager
   sys_free(manager);
