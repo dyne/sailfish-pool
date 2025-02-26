@@ -28,6 +28,10 @@
 #include <stdint.h>
 #include <assert.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 // Configuration
 #define BLOCK_SIZE 128
 #define POOL_SIZE (8192 * BLOCK_SIZE) // one MiB
@@ -81,12 +85,39 @@ static inline fastalloc32_mm *arg_manager(void *mm) {
 
 // Hash function for pointers
 static inline size_t hash_ptr(void *ptr) {
-  return ((uintptr_t)ptr >> 4) % HASH_TABLE_SIZE; // Simple hash function
+  return ((ptr_t)ptr >> 4) % HASH_TABLE_SIZE; // Simple hash function
+}
+
+#undef __EMSCRIPTEN__
+static inline ptr_t sys_malloc(size_t size) {
+#if defined(__EMSCRIPTEN__)
+	int wasmptr = EM_ASM_INT({Module._malloc($0);}, size);
+	return (ptr_t)wasmptr;
+#else
+	return (ptr_t)malloc(size);
+#endif
+}
+
+static inline ptr_t sys_calloc(size_t nmemb, size_t size) {
+#if defined(__EMSCRIPTEN__)
+	int wasmptr = EM_ASM_INT({Module._calloc($0,$1);}, nmemb, size);
+	return (ptr_t)wasmptr;
+#else
+	return (ptr_t)calloc(nmemb, size);
+#endif
+}
+
+static inline void sys_free(void *ptr) {
+#if defined(__EMSCRIPTEN__)
+	EM_ASM({Module._free($0);}, ptr);
+#else
+	free(ptr);
+#endif
 }
 
 // Pool initialization
 static inline void pool_init(pool *pool, size_t initial_size) {
-  pool->data = (unsigned char *)malloc(initial_size);
+	pool->data = (unsigned char *)sys_malloc(initial_size);
   if (pool->data == NULL) {
     fprintf(stderr, "Failed to allocate pool memory\n");
     exit(EXIT_FAILURE);
@@ -94,9 +125,9 @@ static inline void pool_init(pool *pool, size_t initial_size) {
 
   pool->total_blocks = initial_size / BLOCK_SIZE;
   pool->free_list = (unsigned char **)
-    calloc(pool->total_blocks, sizeof(unsigned char *));
+    sys_calloc(pool->total_blocks, sizeof(unsigned char *));
   if (pool->free_list == NULL) {
-    free(pool->data);
+    sys_free(pool->data);
     fprintf(stderr, "Failed to allocate free list\n");
     exit(EXIT_FAILURE);
   }
@@ -116,14 +147,14 @@ static inline void *pool_alloc(pool *pool) {
 }
 
 // Pool deallocation
-static inline void pool_free(pool *pool, void *ptr) {
+static inline void pool_free(pool *pool, ptr_t *ptr) {
   pool->free_list[pool->free_count++] = (unsigned char *)ptr;
 }
 
 // Create memory manager
 void *fastalloc32_create() {
   fastalloc32_mm *manager = (fastalloc32_mm *)
-    malloc(sizeof(fastalloc32_mm));
+    sys_malloc(sizeof(fastalloc32_mm));
   if (manager == NULL) {
     fprintf(stderr, "Failed to allocate memory manager\n");
     return NULL;
@@ -145,18 +176,18 @@ void fastalloc32_destroy(void *restrict mm) {
     while (current) {
       large_allocation *next = current->next;
       secure_zero(current->ptr, current->size);
-      free(current->ptr);
-      free(current);
+      sys_free(current->ptr);
+      sys_free(current);
       current = next;
     }
   }
 
   // Free pool memory
-  free(manager->pool.data);
-  free(manager->pool.free_list);
+  sys_free(manager->pool.data);
+  sys_free(manager->pool.free_list);
 
   // Free manager
-  free(manager);
+  sys_free(manager);
 }
 
 // Allocate memory
@@ -171,15 +202,15 @@ void *fastalloc32_malloc(void *restrict mm, size_t size) {
     }
   }
 
-  void *ptr = malloc(size);
+  void *ptr = (void*)sys_malloc(size);
   if (ptr == NULL) {
     return NULL; // malloc failed
   }
 
   large_allocation *large_alloc = (large_allocation *)
-    malloc(sizeof(large_allocation));
+    sys_malloc(sizeof(large_allocation));
   if (large_alloc == NULL) {
-    free(ptr);
+    sys_free(ptr);
     return NULL; // malloc failed
   }
 
@@ -199,8 +230,8 @@ void fastalloc32_free(void *restrict mm, void *ptr) {
   fastalloc32_mm *restrict manager = arg_manager(mm);
   if (ptr == NULL) return; // Freeing NULL is a no-op
 
-  if ((uintptr_t)ptr >= (uintptr_t)manager->pool.data
-      && (uintptr_t)ptr < (uintptr_t)
+  if ((ptr_t)ptr >= (ptr_t)manager->pool.data
+      && (ptr_t)ptr < (ptr_t)
       (manager->pool.data + manager->pool.total_blocks * BLOCK_SIZE)) {
     pool_free(&manager->pool, ptr);
   } else {
@@ -211,14 +242,14 @@ void fastalloc32_free(void *restrict mm, void *ptr) {
         large_allocation *to_free = *curr;
         *curr = (*curr)->next;
         secure_zero(to_free->ptr, to_free->size);
-        free(to_free->ptr);
-        free(to_free);
+        sys_free(to_free->ptr);
+        sys_free(to_free);
         return;
       }
       curr = &(*curr)->next;
     }
     // If we reach here, ptr was not allocated by this memory manager
-    free(ptr);
+    sys_free(ptr);
   }
 }
 
