@@ -261,7 +261,13 @@ void *fastalloc32_realloc(void *restrict mm, void *ptr, size_t size) {
     }
 
     // Handle realloc for memory allocated outside the manager's control
-    return realloc(ptr, size);
+    // Fallback to malloc + memcpy + free
+    void *new_ptr = fastalloc32_malloc(manager, size);
+    if (new_ptr) {
+      memcpy(new_ptr, ptr, size); // Copy the entire size (assume size is safe)
+      free(ptr); // Free the original pointer
+    }
+    return new_ptr;
   }
 }
 
