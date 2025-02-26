@@ -38,6 +38,12 @@
 static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
 static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of two");
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__)
+#define ptr_t intptr_t
+#else
+#define ptr_t uint32_t
+#endif
+
 // Memory pool structure
 typedef struct pool {
   unsigned char *data;
