@@ -39,6 +39,8 @@
 #define POOL_SIZE (8192 * BLOCK_SIZE) // one MiB
 #define ALIGNMENT 4
 #define HASH_TABLE_SIZE 1024 // Number of buckets in the hash table
+#define SECURE_ZERO
+
 
 // Ensure BLOCK_SIZE and ALIGNMENT are powers of two
 static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
@@ -49,11 +51,12 @@ static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of 
 #else
 #define ptr_t uint32_t
 #endif
+static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
 
 // Memory pool structure
 typedef struct pool {
-  unsigned char *data;
-  unsigned char *free_list; // Pointer to the first free block
+  uint8_t *data;
+  uint8_t *free_list; // Pointer to the first free block
   size_t free_count;
   size_t total_blocks;
   size_t bytesize;
@@ -78,7 +81,7 @@ static inline size_t align_up(size_t size, size_t alignment) {
 }
 
 static inline void secure_zero(void *ptr, size_t size) {
-  volatile unsigned char *p = ptr;
+  volatile uint8_t *p = ptr;
   while (size--) *p++ = 0;
 }
 
@@ -91,56 +94,45 @@ static inline size_t hash_ptr(void *ptr) {
   return ((ptr_t)ptr >> 4) % HASH_TABLE_SIZE; // Simple hash function
 }
 
-#undef __EMSCRIPTEN__
 static inline ptr_t sys_malloc(size_t size) {
-#if defined(__EMSCRIPTEN__)
-	int wasmptr = EM_ASM_INT({Module._malloc($0);}, size);
-	return (ptr_t)wasmptr;
-#else
-	return (ptr_t)malloc(size);
-#endif
+  ptr_t ptr;
+  ptr = (ptr_t)malloc(size);
+  if(!ptr) perror("system malloc error");
+  return ptr;
 }
 
-static inline ptr_t sys_calloc(size_t nmemb, size_t size) {
-#if defined(__EMSCRIPTEN__)
-	int wasmptr = EM_ASM_INT({Module._calloc($0,$1);}, nmemb, size);
-	return (ptr_t)wasmptr;
-#else
-	return (ptr_t)calloc(nmemb, size);
-#endif
-}
-
-static inline void sys_free(void *ptr) {
-#if defined(__EMSCRIPTEN__)
-	EM_ASM({Module._free($0);}, ptr);
-#else
-	free(ptr);
-#endif
-}
+#define sys_free free
+// static inline void sys_free(void *ptr) {
+// 	free(ptr);
+// }
 
 // Pool initialization
 static inline void pool_init(pool *pool, size_t bytesize) {
 #if defined(__EMSCRIPTEN__)
-	pool->data = (unsigned char *)sys_malloc(bytesize);
+	pool->data = (uint8_t *)sys_malloc(bytesize);
+  if (pool->data == NULL) {
+    fprintf(stderr, "Failed to allocate pool memory\n");
+    exit(EXIT_FAILURE);
+  }
 #else
   pool->data = mmap(NULL, bytesize, PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
                     , -1, 0);
-#endif
-
   if (pool->data == NULL || pool->data == MAP_FAILED) {
     fprintf(stderr, "Failed to allocate pool memory\n");
     exit(EXIT_FAILURE);
   }
+#endif
+
   pool->bytesize = bytesize;
   pool->total_blocks = bytesize / BLOCK_SIZE;
   // Initialize the embedded free list
   pool->free_list = pool->data;
   for (size_t i = 0; i < pool->total_blocks - 1; ++i) {
-    *(unsigned char **)(pool->data + i * BLOCK_SIZE) =
+    *(uint8_t **)(pool->data + i * BLOCK_SIZE) =
       pool->data + (i + 1) * BLOCK_SIZE;
   }
-  *(unsigned char **)
+  *(uint8_t **)
     (pool->data + (pool->total_blocks - 1)
      * BLOCK_SIZE) = NULL;
 }
@@ -152,16 +144,16 @@ static inline void *pool_alloc(pool *pool) {
   }
 
   // Remove the first block from the free list
-  unsigned char *block = pool->free_list;
-  pool->free_list = *(unsigned char **)block;
+  uint8_t *block = pool->free_list;
+  pool->free_list = *(uint8_t **)block;
   return block;
 }
 
 // Pool deallocation
 static inline void pool_free(pool *pool, void *ptr) {
   // Add the block back to the free list
-  *(unsigned char **)ptr = pool->free_list;
-  pool->free_list = (unsigned char *)ptr;
+  *(uint8_t **)ptr = pool->free_list;
+  pool->free_list = (uint8_t *)ptr;
 }
 
 // Create memory manager
@@ -169,13 +161,14 @@ void *fastalloc32_create() {
   fastalloc32_mm *manager = (fastalloc32_mm *)
     sys_malloc(sizeof(fastalloc32_mm));
   if (manager == NULL) {
-    fprintf(stderr, "Failed to allocate memory manager\n");
+    perror("memory manager creation error");
     return NULL;
   }
 
   pool_init(&manager->pool, POOL_SIZE);
   // Initialize hash table
   memset(manager->hash_table, 0, sizeof(manager->hash_table));
+  fprintf(stderr,"⚡Fallocate32.c initalized\n");
   return (void *)manager;
 }
 
@@ -188,7 +181,9 @@ void fastalloc32_destroy(void *restrict mm) {
     large_allocation *current = manager->hash_table[i];
     while (current) {
       large_allocation *next = current->next;
+#if defined(SECURE_ZERO)
       secure_zero(current->ptr, current->size);
+#endif
       sys_free(current->ptr);
       sys_free(current);
       current = next;
@@ -257,7 +252,9 @@ void fastalloc32_free(void *restrict mm, void *ptr) {
       if ((*curr)->ptr == ptr) {
         large_allocation *to_free = *curr;
         *curr = (*curr)->next;
+#if defined(SECURE_ZERO)
         secure_zero(to_free->ptr, to_free->size);
+#endif
         sys_free(to_free->ptr);
         sys_free(to_free);
         return;
