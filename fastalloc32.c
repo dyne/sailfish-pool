@@ -299,7 +299,11 @@ int main(int argc, char **argv) {
   fastalloc32_mm *manager = fastalloc32_create();
 
   void *pointers[NUM_ALLOCATIONS];
-
+#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__)
+  fprintf(stderr,"Running in a 64-bit environment\n");
+#else
+  fprintf(stderr,"Running in a 32-bit environment\n");
+#endif
   fprintf(stderr,"Step 1: Allocate memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
