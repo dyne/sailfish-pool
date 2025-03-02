@@ -37,20 +37,9 @@
 
 // Configuration
 #define BLOCK_SIZE 128
-#define POOL_SIZE (8192 * BLOCK_SIZE) // one MiB
-#define ALIGNMENT 4
-//#define SECURE_ZERO // Enable secure zeroing
-
-// Ensure BLOCK_SIZE and ALIGNMENT are powers of two
 static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
-static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of two");
-
-#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__)
-#define ptr_t intptr_t
-#else
-#define ptr_t uint32_t
-#endif
-static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
+#define POOL_SIZE (4 * 8192 * BLOCK_SIZE) // one MiB
+#define SECURE_ZERO // Enable secure zeroing
 
 // Memory pool structure
 typedef struct fastpool_t {
@@ -58,27 +47,33 @@ typedef struct fastpool_t {
   uint8_t *free_list; // Pointer to the first free block
   uint32_t free_count;
   uint32_t total_blocks;
-  uint32_t bytesize;
+  uint32_t total_bytes;
 } fastpool_t;
 
-static inline void secure_zero(void *ptr, size_t size) {
+static inline void secure_zero(void *ptr, uint32_t size) {
   volatile uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
   volatile uint32_t s = (size>>2); // divide counter by 4
   while (s--) *p++ = 0x0; // hit the road jack
 }
 
+
+#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__)
+#define ptr_t intptr_t
+#else
+#define ptr_t uint32_t
+#endif
+static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
 static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
   volatile ptr_t p = (ptr_t)ptr;
   return(p >= (ptr_t)pool->data
-         && p < (ptr_t)(pool->data
-                        + pool->total_blocks * BLOCK_SIZE));
+         && p < (ptr_t)(pool->data + pool->total_bytes));
 }
 
 #define sys_malloc malloc
 #define sys_free   free
 
 // Pool initialization
-static inline void pool_init(fastpool_t *pool, size_t bytesize) {
+static inline void pool_init(fastpool_t *pool, uint32_t bytesize) {
 #if defined(__EMSCRIPTEN__)
   pool->data = (uint8_t *)sys_malloc(bytesize);
   if (pool->data == NULL) {
@@ -95,11 +90,11 @@ static inline void pool_init(fastpool_t *pool, size_t bytesize) {
   }
 #endif
 
-  pool->bytesize = bytesize;
+  pool->total_bytes = bytesize;
   pool->total_blocks = bytesize / BLOCK_SIZE;
   // Initialize the embedded free list
   pool->free_list = pool->data;
-  for (size_t i = 0; i < pool->total_blocks - 1; ++i) {
+  for (volatile uint32_t i = 0; i < pool->total_blocks - 1; ++i) {
     *(uint8_t **)(pool->data + i * BLOCK_SIZE) =
       pool->data + (i + 1) * BLOCK_SIZE;
   }
@@ -143,18 +138,18 @@ void *fastalloc32_create() {
   }
 
   pool_init(pool, POOL_SIZE);
-  fprintf(stderr,"⚡fastalloc32.c initalized\n");
+  // fprintf(stderr,"⚡fastalloc32.c initalized\n");
   return (void *)pool;
 }
 
 // Destroy memory manager
 void fastalloc32_destroy(void *restrict pool) {
-  volatile fastpool_t *p = (fastpool_t*)pool;
+  fastpool_t *p = (fastpool_t*)pool;
   // Free pool memory
 #if defined(__EMSCRIPTEN__)
   sys_free(p->data);
 #else
-  munmap(p->data, p->bytesize);
+  munmap(p->data, p->total_bytes);
 #endif
   sys_free(pool);
 }
@@ -162,7 +157,6 @@ void fastalloc32_destroy(void *restrict pool) {
 // Allocate memory
 void *fastalloc32_malloc(void *restrict pool, const size_t size) {
   fastpool_t *restrict manager = (fastpool_t*)pool;
-  // volatile size_t size = align_up(asize, ALIGNMENT);
   void *ptr;
   if (size <= BLOCK_SIZE) {
     ptr = pool_alloc(pool);
@@ -263,7 +257,7 @@ int main(int argc, char **argv) {
 
   fprintf(stderr,"Step 3: Reallocate remaining memory\n");
   for (int i = 1; i < NUM_ALLOCATIONS; i += 2) {
-    size_t new_size = rand() % MAX_ALLOCATION_SIZE + 1;
+    size_t new_size = rand() % (MAX_ALLOCATION_SIZE*4) + 1;
     pointers[i] = fastalloc32_realloc(pool, pointers[i], new_size);
     assert(pointers[i] != NULL); // Ensure reallocation was successful
 //    fastalloc32_debug(manager);
