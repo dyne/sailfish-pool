@@ -71,8 +71,9 @@ static inline size_t align_up(size_t size, size_t alignment) {
 }
 
 static inline void secure_zero(void *ptr, size_t size) {
-  volatile uint8_t *p = ptr;
-  while (size--) *p++ = 0;
+  volatile uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
+  volatile uint32_t s = (size>>2); // divide counter by 4
+  while (s--) *p++ = 0x0; // hit the road jack
 }
 
 static inline fastalloc32_mm *arg_manager(void *mm) {
