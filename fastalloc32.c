@@ -53,23 +53,13 @@ static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of 
 static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
 
 // Memory pool structure
-typedef struct pool {
+typedef struct fastpool_t {
   uint8_t *data;
   uint8_t *free_list; // Pointer to the first free block
-  size_t free_count;
-  size_t total_blocks;
-  size_t bytesize;
-} pool;
-
-// Memory manager structure
-typedef struct fastalloc32_mm {
-  pool pool;
-} fastalloc32_mm;
-
-// Utility functions
-static inline size_t align_up(size_t size, size_t alignment) {
-  return (size + alignment - 1) & ~(alignment - 1);
-}
+  uint32_t free_count;
+  uint32_t total_blocks;
+  uint32_t bytesize;
+} fastpool_t;
 
 static inline void secure_zero(void *ptr, size_t size) {
   volatile uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
@@ -77,22 +67,18 @@ static inline void secure_zero(void *ptr, size_t size) {
   while (s--) *p++ = 0x0; // hit the road jack
 }
 
-static inline fastalloc32_mm *arg_manager(void *mm) {
-  return (fastalloc32_mm *)mm;
-}
-
-static inline bool is_in_pool(fastalloc32_mm *mm, const void *ptr) {
+static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
   volatile ptr_t p = (ptr_t)ptr;
-  return(p >= (ptr_t)mm->pool.data
-         && p < (ptr_t)(mm->pool.data
-                          + mm->pool.total_blocks * BLOCK_SIZE));
+  return(p >= (ptr_t)pool->data
+         && p < (ptr_t)(pool->data
+                        + pool->total_blocks * BLOCK_SIZE));
 }
 
 #define sys_malloc malloc
 #define sys_free   free
 
 // Pool initialization
-static inline void pool_init(pool *pool, size_t bytesize) {
+static inline void pool_init(fastpool_t *pool, size_t bytesize) {
 #if defined(__EMSCRIPTEN__)
   pool->data = (uint8_t *)sys_malloc(bytesize);
   if (pool->data == NULL) {
@@ -124,7 +110,7 @@ static inline void pool_init(pool *pool, size_t bytesize) {
 }
 
 // Pool allocation
-static inline void *pool_alloc(pool *pool) {
+static inline void *pool_alloc(fastpool_t *pool) {
   if (pool->free_list == NULL) {
     return NULL; // Pool exhausted
   }
@@ -137,7 +123,7 @@ static inline void *pool_alloc(pool *pool) {
 }
 
 // Pool deallocation
-static inline void pool_free(pool *pool, void *ptr) {
+static inline void pool_free(fastpool_t *pool, void *ptr) {
   // Add the block back to the free list
   *(uint8_t **)ptr = pool->free_list;
   pool->free_list = (uint8_t *)ptr;
@@ -150,38 +136,36 @@ static inline void pool_free(pool *pool, void *ptr) {
 
 // Create memory manager
 void *fastalloc32_create() {
-  fastalloc32_mm *manager = (fastalloc32_mm *)
-    sys_malloc(sizeof(fastalloc32_mm));
-  if (manager == NULL) {
-    perror("memory manager creation error");
+  fastpool_t *pool = (fastpool_t*) sys_malloc(sizeof(fastpool_t));
+  if (pool == NULL) {
+    perror("memory pool creation error");
     return NULL;
   }
 
-  pool_init(&manager->pool, POOL_SIZE);
+  pool_init(pool, POOL_SIZE);
   fprintf(stderr,"⚡fastalloc32.c initalized\n");
-  return (void *)manager;
+  return (void *)pool;
 }
 
 // Destroy memory manager
-void fastalloc32_destroy(void *restrict mm) {
-  fastalloc32_mm *restrict manager = arg_manager(mm);
+void fastalloc32_destroy(void *restrict pool) {
+  volatile fastpool_t *p = (fastpool_t*)pool;
   // Free pool memory
 #if defined(__EMSCRIPTEN__)
-  sys_free(manager->pool.data);
+  sys_free(p->data);
 #else
-  munmap(manager->pool.data, manager->pool.bytesize);
+  munmap(p->data, p->bytesize);
 #endif
-  // Free manager
-  sys_free(manager);
+  sys_free(pool);
 }
 
 // Allocate memory
-void *fastalloc32_malloc(void *restrict mm, const size_t size) {
-  fastalloc32_mm *restrict manager = arg_manager(mm);
+void *fastalloc32_malloc(void *restrict pool, const size_t size) {
+  fastpool_t *restrict manager = (fastpool_t*)pool;
   // volatile size_t size = align_up(asize, ALIGNMENT);
   void *ptr;
   if (size <= BLOCK_SIZE) {
-    ptr = pool_alloc(&manager->pool);
+    ptr = pool_alloc(pool);
     if (ptr) return ptr;
   }
   // Fallback to system malloc for large allocations
@@ -191,30 +175,27 @@ void *fastalloc32_malloc(void *restrict mm, const size_t size) {
 }
 
 // Free memory
-void fastalloc32_free(void *restrict mm, void *ptr) {
-  fastalloc32_mm *restrict manager = arg_manager(mm);
+void fastalloc32_free(void *restrict pool, void *ptr) {
+  fastpool_t *p = (fastpool_t*)pool;
   if (ptr == NULL) return; // Freeing NULL is a no-op
-  if (is_in_pool(mm,ptr)) {
-    pool_free(&manager->pool, ptr);
+  if (is_in_pool(p,ptr)) {
+    pool_free(p, ptr);
   } else {
     sys_free(ptr);
   }
 }
 
 // Reallocate memory
-void *fastalloc32_realloc(void *restrict mm, void *ptr, const size_t size) {
-  fastalloc32_mm *restrict manager = arg_manager(mm);
-  // volatile size_t size = align_up(asize, ALIGNMENT);
-
+void *fastalloc32_realloc(void *restrict pool, void *ptr, const size_t size) {
   if (ptr == NULL) {
-    return fastalloc32_malloc(manager, size);
+    return fastalloc32_malloc(pool, size);
   }
 
   if (size == 0) {
-    fastalloc32_free(manager, ptr);
+    fastalloc32_free(pool, ptr);
     return NULL;
   }
-  if (is_in_pool(manager,ptr)) {
+  if (is_in_pool((fastpool_t*)pool,ptr)) {
     if (size <= BLOCK_SIZE) {
       return ptr; // No need to reallocate
     } else {
@@ -223,7 +204,7 @@ void *fastalloc32_realloc(void *restrict mm, void *ptr, const size_t size) {
 #ifdef SECURE_ZERO
       secure_zero(ptr, BLOCK_SIZE); // Zero out the old block
 #endif
-      pool_free(&manager->pool, ptr);
+      pool_free(pool, ptr);
       return new_ptr;
     }
   } else {
@@ -232,12 +213,12 @@ void *fastalloc32_realloc(void *restrict mm, void *ptr, const size_t size) {
   }
 }
 
-// Debug function to print memory manager state
-void fastalloc32_debug(void *restrict mm) {
-  fastalloc32_mm *restrict manager = arg_manager(mm);
-  printf("Pool free blocks: %zu/%zu\n",
-         manager->pool.free_count, manager->pool.total_blocks);
-}
+// // Debug function to print memory manager state
+// void fastalloc32_debug(void *restrict pool) {
+//   fastalloc32_mm *restrict manager = arg_manager(mm);
+//   printf("Pool free blocks: %u/%u\n",
+//          manager->pool.free_count, manager->pool.total_blocks);
+// }
 
 #if defined(FASTALLOC32_TEST)
 #include <assert.h>
@@ -248,7 +229,7 @@ void fastalloc32_debug(void *restrict mm) {
 
 int main(int argc, char **argv) {
   srand(time(NULL));
-  fastalloc32_mm *manager = fastalloc32_create();
+  void *pool = fastalloc32_create();
 
   void *pointers[NUM_ALLOCATIONS];
   int sizes[NUM_ALLOCATIONS];
@@ -262,20 +243,20 @@ int main(int argc, char **argv) {
   fprintf(stderr,"Step 1: Allocate memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
-    pointers[i] = fastalloc32_malloc(manager, size);
+    pointers[i] = fastalloc32_malloc(pool, size);
     sizes[i] = size;
     if(size<=BLOCK_SIZE) in_pool++;
     assert(pointers[i] != NULL); // Ensure allocation was successful
 //    fastalloc32_debug(manager);
   }
   fprintf(stderr," %u \tallocations eligible\n",in_pool);
-  fprintf(stderr," %lu \tallocations managed\n",manager->pool.total_blocks - manager->pool.free_count);
-  assert(manager->pool.total_blocks - manager->pool.free_count <= in_pool);
+  fprintf(stderr," %u \tallocations managed\n",((fastpool_t*)pool)->total_blocks - ((fastpool_t*)pool)->free_count);
+  assert(((fastpool_t*)pool)->total_blocks - ((fastpool_t*)pool)->free_count <= in_pool);
   fprintf(stderr,"Step 2: Free every other allocation\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i += 2) {
     // if(sizes[i] > BLOCK_SIZE)
     //   fprintf(stderr,"%u / %u %lu\n",i,NUM_ALLOCATIONS,sizes[i]);
-    fastalloc32_free(manager, pointers[i]);
+    fastalloc32_free(pool, pointers[i]);
     pointers[i] = NULL;
 //    fastalloc32_debug(manager);
   }
@@ -283,7 +264,7 @@ int main(int argc, char **argv) {
   fprintf(stderr,"Step 3: Reallocate remaining memory\n");
   for (int i = 1; i < NUM_ALLOCATIONS; i += 2) {
     size_t new_size = rand() % MAX_ALLOCATION_SIZE + 1;
-    pointers[i] = fastalloc32_realloc(manager, pointers[i], new_size);
+    pointers[i] = fastalloc32_realloc(pool, pointers[i], new_size);
     assert(pointers[i] != NULL); // Ensure reallocation was successful
 //    fastalloc32_debug(manager);
   }
@@ -291,7 +272,7 @@ int main(int argc, char **argv) {
   fprintf(stderr,"Step 4: Free all memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     if (pointers[i] != NULL) {
-      fastalloc32_free(manager, pointers[i]);
+      fastalloc32_free(pool, pointers[i]);
       pointers[i] = NULL;
     }
   }
@@ -301,7 +282,7 @@ int main(int argc, char **argv) {
     assert(pointers[i] == NULL); // Ensure all pointers are freed
   }
 
-  fastalloc32_destroy(manager);
+  fastalloc32_destroy(pool);
   printf("Fastalloc32 test passed successfully.\n");
   return 0;
 }
