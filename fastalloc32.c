@@ -81,9 +81,10 @@ static inline fastalloc32_mm *arg_manager(void *mm) {
   return (fastalloc32_mm *)mm;
 }
 
-static inline bool is_in_pool(fastalloc32_mm *mm, ptr_t ptr) {
-  return(ptr >= (ptr_t)mm->pool.data
-         && ptr < (ptr_t)(mm->pool.data
+static inline bool is_in_pool(fastalloc32_mm *mm, const void *ptr) {
+  volatile ptr_t p = (ptr_t)ptr;
+  return(p >= (ptr_t)mm->pool.data
+         && p < (ptr_t)(mm->pool.data
                           + mm->pool.total_blocks * BLOCK_SIZE));
 }
 
@@ -136,7 +137,7 @@ static inline void *pool_alloc(pool *pool) {
 }
 
 // Pool deallocation
-static inline void pool_free(pool *pool, ptr_t ptr) {
+static inline void pool_free(pool *pool, void *ptr) {
   // Add the block back to the free list
   *(uint8_t **)ptr = pool->free_list;
   pool->free_list = (uint8_t *)ptr;
@@ -193,9 +194,8 @@ void *fastalloc32_malloc(void *restrict mm, const size_t size) {
 void fastalloc32_free(void *restrict mm, void *ptr) {
   fastalloc32_mm *restrict manager = arg_manager(mm);
   if (ptr == NULL) return; // Freeing NULL is a no-op
-  volatile ptr_t p = (ptr_t)ptr;
-  if (is_in_pool(mm,p)) {
-    pool_free(&manager->pool, p);
+  if (is_in_pool(mm,ptr)) {
+    pool_free(&manager->pool, ptr);
   } else {
     sys_free(ptr);
   }
@@ -214,17 +214,16 @@ void *fastalloc32_realloc(void *restrict mm, void *ptr, const size_t size) {
     fastalloc32_free(manager, ptr);
     return NULL;
   }
-  volatile ptr_t p = (ptr_t)ptr;
-  if (is_in_pool(manager,p)) {
+  if (is_in_pool(manager,ptr)) {
     if (size <= BLOCK_SIZE) {
       return ptr; // No need to reallocate
     } else {
       void *new_ptr = sys_malloc(size);
       memcpy(new_ptr, ptr, BLOCK_SIZE); // Copy only BLOCK_SIZE bytes
 #ifdef SECURE_ZERO
-      secure_zero(p, BLOCK_SIZE); // Zero out the old block
+      secure_zero(ptr, BLOCK_SIZE); // Zero out the old block
 #endif
-      pool_free(&manager->pool, p);
+      pool_free(&manager->pool, ptr);
       return new_ptr;
     }
   } else {
