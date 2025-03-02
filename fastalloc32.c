@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #ifdef __EMSCRIPTEN__
@@ -80,14 +81,14 @@ static inline fastalloc32_mm *arg_manager(void *mm) {
   return (fastalloc32_mm *)mm;
 }
 
-static inline ptr_t sys_malloc(size_t size) {
-  ptr_t ptr;
-  ptr = (ptr_t)malloc(size);
-  if(!ptr) perror("system malloc error");
-  return ptr;
+static inline bool is_in_pool(fastalloc32_mm *mm, ptr_t ptr) {
+  return(ptr >= (ptr_t)mm->pool.data
+         && ptr < (ptr_t)(mm->pool.data
+                          + mm->pool.total_blocks * BLOCK_SIZE));
 }
 
-#define sys_free free
+#define sys_malloc malloc
+#define sys_free   free
 
 // Pool initialization
 static inline void pool_init(pool *pool, size_t bytesize) {
@@ -135,7 +136,7 @@ static inline void *pool_alloc(pool *pool) {
 }
 
 // Pool deallocation
-static inline void pool_free(pool *pool, void *ptr) {
+static inline void pool_free(pool *pool, ptr_t ptr) {
   // Add the block back to the free list
   *(uint8_t **)ptr = pool->free_list;
   pool->free_list = (uint8_t *)ptr;
@@ -156,7 +157,7 @@ void *fastalloc32_create() {
   }
 
   pool_init(&manager->pool, POOL_SIZE);
-  fprintf(stderr,"ΓÜíFallocate32.c initalized\n");
+  fprintf(stderr,"⚡fastalloc32.c initalized\n");
   return (void *)manager;
 }
 
@@ -174,42 +175,36 @@ void fastalloc32_destroy(void *restrict mm) {
 }
 
 // Allocate memory
-void *fastalloc32_malloc(void *restrict mm, size_t size) {
+void *fastalloc32_malloc(void *restrict mm, const size_t size) {
   fastalloc32_mm *restrict manager = arg_manager(mm);
-  size = align_up(size, ALIGNMENT);
-
+  // volatile size_t size = align_up(asize, ALIGNMENT);
+  void *ptr;
   if (size <= BLOCK_SIZE) {
-    void *ptr = pool_alloc(&manager->pool);
-    if (ptr != NULL) {
-      return ptr;
-    }
+    ptr = pool_alloc(&manager->pool);
+    if (ptr) return ptr;
   }
   // Fallback to system malloc for large allocations
-  return malloc(size);
+  ptr = sys_malloc(size);
+  if(ptr == NULL) perror("system malloc error");
+  return ptr;
 }
 
 // Free memory
 void fastalloc32_free(void *restrict mm, void *ptr) {
   fastalloc32_mm *restrict manager = arg_manager(mm);
   if (ptr == NULL) return; // Freeing NULL is a no-op
-
-  if ((ptr_t)ptr >= (ptr_t)manager->pool.data
-      && (ptr_t)ptr < (ptr_t)
-      (manager->pool.data + manager->pool.total_blocks * BLOCK_SIZE)) {
-    pool_free(&manager->pool, ptr);
+  volatile ptr_t p = (ptr_t)ptr;
+  if (is_in_pool(mm,p)) {
+    pool_free(&manager->pool, p);
   } else {
-    // Handle large allocations
-// #ifdef SECURE_ZERO
-//     secure_zero(ptr, BLOCK_SIZE); // Zero out the entire block
-// #endif
     sys_free(ptr);
   }
 }
 
 // Reallocate memory
-void *fastalloc32_realloc(void *restrict mm, void *ptr, size_t size) {
+void *fastalloc32_realloc(void *restrict mm, void *ptr, const size_t size) {
   fastalloc32_mm *restrict manager = arg_manager(mm);
-  size = align_up(size, ALIGNMENT);
+  // volatile size_t size = align_up(asize, ALIGNMENT);
 
   if (ptr == NULL) {
     return fastalloc32_malloc(manager, size);
@@ -219,21 +214,17 @@ void *fastalloc32_realloc(void *restrict mm, void *ptr, size_t size) {
     fastalloc32_free(manager, ptr);
     return NULL;
   }
-
-  if ((uintptr_t)ptr >= (uintptr_t)manager->pool.data
-      && (uintptr_t)ptr < (uintptr_t)
-      (manager->pool.data + manager->pool.total_blocks * BLOCK_SIZE)) {
+  volatile ptr_t p = (ptr_t)ptr;
+  if (is_in_pool(manager,p)) {
     if (size <= BLOCK_SIZE) {
       return ptr; // No need to reallocate
     } else {
-      void *new_ptr = fastalloc32_malloc(manager, size);
-      if (new_ptr) {
-        memcpy(new_ptr, ptr, BLOCK_SIZE); // Copy only BLOCK_SIZE bytes
+      void *new_ptr = sys_malloc(size);
+      memcpy(new_ptr, ptr, BLOCK_SIZE); // Copy only BLOCK_SIZE bytes
 #ifdef SECURE_ZERO
-        secure_zero(ptr, BLOCK_SIZE); // Zero out the old block
+      secure_zero(p, BLOCK_SIZE); // Zero out the old block
 #endif
-        pool_free(&manager->pool, ptr);
-      }
+      pool_free(&manager->pool, p);
       return new_ptr;
     }
   } else {
