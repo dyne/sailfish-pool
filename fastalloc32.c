@@ -1,22 +1,20 @@
 /* SPDX-FileCopyrightText: 2025 Dyne.org foundation
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Fast memory allocator for 32 bit 'puters
- *
  * Copyright (C) 2025 Dyne.org foundation
  * designed, written and maintained by Denis Roio <jaromil@dyne.org>
  *
  * This program is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Affero General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public
+ * You should have received a copy of the GNU General Public
  * License along with this program.  If not, see
  * <https://www.gnu.org/licenses/>.
  *
@@ -42,6 +40,7 @@
 static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
 #define POOL_SIZE (2 * 8192 * BLOCK_SIZE) // two MiBs
 #define SECURE_ZERO // Enable secure zeroing
+#define FALLBACK // Enable fallback to system alloc
 
 // Memory pool structure
 typedef struct fastpool_t {
@@ -176,13 +175,19 @@ void *fastalloc32_malloc(void *restrict pool, const size_t size) {
 }
 
 // Free memory
-void fastalloc32_free(void *restrict pool, void *ptr) {
+bool fastalloc32_free(void *restrict pool, void *ptr) {
   fastpool_t *p = (fastpool_t*)pool;
-  if (ptr == NULL) return; // Freeing NULL is a no-op
+  if (ptr == NULL) return false; // Freeing NULL is a no-op
   if (is_in_pool(p,ptr)) {
     pool_free(p, ptr);
+    return true;
   } else {
+#ifdef FALLBACK
     sys_free(ptr);
+    return true;
+#else
+    return false;
+#endif
   }
 }
 
@@ -209,8 +214,12 @@ void *fastalloc32_realloc(void *restrict pool, void *ptr, const size_t size) {
       return new_ptr;
     }
   } else {
+#ifdef FALLBACK
     // Handle large allocations
     return realloc(ptr, size);
+#else
+    return NULL;
+#endif
   }
 }
 
@@ -221,12 +230,17 @@ void fastalloc32_status(void *restrict pool) {
           p->total_blocks - p->free_count);
 }
 
-#if defined(FASTALLOC32_TEST)
+#if defined(FASTALLOC32_TEST) && defined(FALLBACK)
 #include <assert.h>
 #include <time.h>
 
+#ifndef NUM_ALLOCATIONS
 #define NUM_ALLOCATIONS 20000
+#endif
+
+#ifndef MAX_ALLOCATION_SIZE
 #define MAX_ALLOCATION_SIZE BLOCK_SIZE*2
+#endif
 
 int main(int argc, char **argv) {
   srand(time(NULL));
@@ -241,6 +255,8 @@ int main(int argc, char **argv) {
 #else
   fprintf(stderr,"Running in a 32-bit environment\n");
 #endif
+  fprintf(stderr,"Testing with %u allocations\n",NUM_ALLOCATIONS);
+
   fprintf(stderr,"Step 1: Allocate memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
@@ -248,27 +264,25 @@ int main(int argc, char **argv) {
     sizes[i] = size;
     if(size<=BLOCK_SIZE) in_pool++;
     assert(pointers[i] != NULL); // Ensure allocation was successful
-//    fastalloc32_debug(manager);
   }
-  fprintf(stderr," %u \tallocations eligible\n",in_pool);
-  fprintf(stderr," %u \tallocations managed\n",((fastpool_t*)pool)->total_blocks - ((fastpool_t*)pool)->free_count);
-  assert(((fastpool_t*)pool)->total_blocks - ((fastpool_t*)pool)->free_count <= in_pool);
+  fastalloc32_status(pool);
+
+  assert(((fastpool_t*)pool)->total_blocks
+         - ((fastpool_t*)pool)->free_count <= in_pool);
   fprintf(stderr,"Step 2: Free every other allocation\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i += 2) {
-    // if(sizes[i] > BLOCK_SIZE)
-    //   fprintf(stderr,"%u / %u %lu\n",i,NUM_ALLOCATIONS,sizes[i]);
     fastalloc32_free(pool, pointers[i]);
     pointers[i] = NULL;
-//    fastalloc32_debug(manager);
   }
+  fastalloc32_status(pool);
 
   fprintf(stderr,"Step 3: Reallocate remaining memory\n");
   for (int i = 1; i < NUM_ALLOCATIONS; i += 2) {
     size_t new_size = rand() % (MAX_ALLOCATION_SIZE*4) + 1;
     pointers[i] = fastalloc32_realloc(pool, pointers[i], new_size);
     assert(pointers[i] != NULL); // Ensure reallocation was successful
-//    fastalloc32_debug(manager);
   }
+  fastalloc32_status(pool);
 
   fprintf(stderr,"Step 4: Free all memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
@@ -277,6 +291,7 @@ int main(int argc, char **argv) {
       pointers[i] = NULL;
     }
   }
+  fastalloc32_status(pool);
 
   fprintf(stderr,"Step 5: Final check for memory leaks\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
