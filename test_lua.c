@@ -25,22 +25,23 @@
 #include <lualib.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+// sailfish pool
 #include <sfpool.h>
 
 static sfpool_t *SFP;
 
 // Custom memory allocation function
-void *sfpool_alloc(void *ud, void *ptr, size_t osize, size_t nsize);
+void *custom_lua_mem(void *ud, void *ptr, size_t osize, size_t nsize);
 
-#define SYS_ALLOC
-#ifdef SYS_ALLOC
-#define lua_malloc(size) malloc(size)
+#if defined(MEM_SYSTEM)
+#define lua_malloc(size)       malloc(size)
 #define lua_realloc(ptr, size) realloc(ptr,size)
-#define lua_free(ptr) free(ptr)
-#else
-#define lua_malloc(size) sfpool_alloc(SFP,size)
+#define lua_free(ptr)          free(ptr)
+#elif defined(MEM_SFPOOL)
+#define lua_malloc(size)       sfpool_malloc(SFP,size)
 #define lua_realloc(ptr, size) sfpool_realloc(SFP,ptr,size)
-#define lua_free(ptr) sfpool_free(SFP,ptr)
+#define lua_free(ptr)          sfpool_free(SFP,ptr)
 #endif
 
 int main(int argc, char* argv[]) {
@@ -49,10 +50,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const char* script_path = argv[1];
+#if defined(MEM_SFPOOL)
     SFP = malloc(sizeof(sfpool_t));
-    assert(sfpool_init(SFP,2*8192,128));
-    // Initialize Lua state with custom memory allocator
-    lua_State* L = lua_newstate(sfpool_alloc, NULL);
+    sfpool_init(SFP, 8192*2,128);
+    sfpool_status(SFP);
+#endif
+    lua_State* L = lua_newstate(custom_lua_mem, NULL);
     if (!L) {
         fprintf(stderr, "Failed to initialize Lua state.\n");
         return 1;
@@ -76,11 +79,14 @@ int main(int argc, char* argv[]) {
     }
     // Clean up and exit
     lua_close(L);
+#if defined(MEM_SFPOOL)
     sfpool_teardown(SFP);
+    free(SFP);
+#endif
     return 0;
 }
 
-void *sfpool_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
+void *custom_lua_mem(void *ud, void *ptr, size_t osize, size_t nsize) {
   (void)ud;
 	if(ptr == NULL) {
 		if(nsize!=0) {
@@ -92,11 +98,8 @@ void *sfpool_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
 	} else {
 		if(nsize==0) {
 			lua_free(ptr);
-			return NULL; }
-		if(osize >= nsize) { // shrink
-			return lua_realloc(ptr, nsize);
-		} else { // extend
-			return lua_realloc(ptr, nsize);
-		}
-	}
+			return NULL;
+    }
+    return lua_realloc(ptr, nsize);
+  }
 }

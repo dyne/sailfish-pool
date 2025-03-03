@@ -22,15 +22,12 @@
 
 #ifndef __SFPOOL_H__
 #define __SFPOOL_H__
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-
-// platform dependent memory allocation interfaces
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #elif defined(_WIN32)
@@ -46,14 +43,14 @@
 // Memory pool structure
 typedef struct sfpool_t {
   uint8_t *data;
-  uint8_t *free_list; // Pointer to the first free block
+  uint8_t *free_list;
   uint32_t free_count;
   uint32_t total_blocks;
   uint32_t total_bytes;
   uint32_t block_size;
-} sfpool_t; // must keep to 32 bytes
+} sfpool_t;
 
-static inline void secure_zero(void *ptr, uint32_t size) {
+static inline void _secure_zero(void *ptr, uint32_t size) {
   volatile uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
   volatile uint32_t s = (size>>2); // divide counter by 4
   while (s--) *p++ = 0x0; // hit the road jack
@@ -61,36 +58,29 @@ static inline void secure_zero(void *ptr, uint32_t size) {
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
 #define ptr_t uint64_t
-#define sfpool_size 32
 #else
 #define ptr_t uint32_t
-#define sfpool_size 24
 #endif
 static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
-static_assert(sizeof(sfpool_t) == sfpool_size, "Size of sfpool_t is not 32 bytes");
 
-static inline bool is_in_pool(sfpool_t *pool, const void *ptr) {
+static inline bool _is_in_pool(sfpool_t *pool, const void *ptr) {
   volatile ptr_t p = (ptr_t)ptr;
   return(p >= (ptr_t)pool->data
          && p < (ptr_t)(pool->data + pool->total_bytes));
 }
 
-// Pool initialization: allocates memory for an array of nmemb
-// elements of size bytes each and returns a pointer to the allocated
-// memory pool
-bool sfpool_init(sfpool_t *pool, size_t nmemb, size_t size) {
-  if(size & (size - 1) != 0) {
+// Create memory manager
+size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
+  if((blocksize & (blocksize - 1)) != 0) {
     fprintf(stderr,"SFPool blocksize must be a power of two\n");
-    return false;
+    return -1;
   }
-  size_t totalsize = nmemb * size;
+  size_t totalsize = nmemb * blocksize;
 #if defined(__EMSCRIPTEN__)
   pool->data = (uint8_t *)malloc(totalsize);
-
 #elif defined(_WIN32)
   pool->data = VirtualAlloc(NULL, totalsize,
                             MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
 #else // Posix
   pool->data = mmap(NULL, totalsize, PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
@@ -98,69 +88,65 @@ bool sfpool_init(sfpool_t *pool, size_t nmemb, size_t size) {
 #endif
   if (pool->data == NULL) {
     fprintf(stderr, "Failed to allocate pool memory\n");
-    return false;
+    exit(EXIT_FAILURE);
   }
-
-  pool->total_blocks = (uint32_t)nmemb;
-  pool->block_size   = (uint32_t)size;
-  pool->total_bytes  = (uint32_t)totalsize;
+  // Zero out the entire pool
+  _secure_zero(pool->data, totalsize);
+  pool->total_bytes  = totalsize;
+  pool->total_blocks = nmemb;
+  pool->block_size   = blocksize;
   // Initialize the embedded free list
   pool->free_list = pool->data;
   for (volatile uint32_t i = 0; i < pool->total_blocks - 1; ++i) {
-    *(uint8_t **)(pool->data + i * size) =
-      pool->data + (i + 1) * size;
+    *(uint8_t **)(pool->data + i * blocksize) =
+      pool->data + (i + 1) * blocksize;
   }
   pool->free_count = pool->total_blocks;
   *(uint8_t **)
-    (pool->data + (pool->total_blocks - 1)
-     * size) = NULL;
-  return true;
+    (pool->data + (pool->total_blocks - 1) * blocksize) = NULL;
+  return totalsize;
 }
 
 // Destroy memory manager
-void sfpool_teardown(void *restrict pool) {
-  sfpool_t *p = (sfpool_t*)pool;
+void sfpool_teardown(sfpool_t *restrict pool) {
   // Free pool memory
 #if defined(__EMSCRIPTEN__)
-  free(p->data);
+  free(pool->data);
 #elif defined(_WIN32)
-  VirtualFree(p->data, 0, MEM_RELEASE);
+  VirtualFree(pool->data, 0, MEM_RELEASE);
 #else // Posix
-  munmap(p->data, p->total_bytes);
+  munmap(pool->data, pool->total_bytes);
 #endif
 }
 
 // Allocate memory
-void *sfpool_malloc(void *restrict pool, const size_t size) {
-  sfpool_t *restrict sfp = (sfpool_t*)pool;
-  if (!sfp->free_list) return NULL; // pool is full
-  if (size <= sfp->block_size) {
+void *sfpool_malloc(sfpool_t *restrict pool, const size_t size) {
+  void *ptr;
+  if (size <= pool->block_size
+      && pool->free_list != NULL) {
     // Remove the first block from the free list
-    uint8_t *block = sfp->free_list;
-    sfp->free_list = *(uint8_t **)block;
-    sfp->free_count-- ;
+    uint8_t *block = pool->free_list;
+    pool->free_list = *(uint8_t **)block;
+    pool->free_count-- ;
     return block;
   }
-  void *ptr = NULL;
-#ifdef FALLBACK
+  // Fallback to system malloc for large allocations
   ptr = malloc(size);
   if(ptr == NULL) perror("system malloc error");
-#endif
   return ptr;
 }
 
 // Free memory
-bool sfpool_free(void *restrict pool, void *ptr) {
-  if (!ptr) return false; // Freeing NULL is a no-op
-  sfpool_t *sfp = (sfpool_t*)pool;
-  if (is_in_pool(sfp,ptr)) {
+bool sfpool_free(sfpool_t *restrict pool, void *ptr) {
+  if (ptr == NULL) return false; // Freeing NULL is a no-op
+  if (_is_in_pool(pool,ptr)) {
     // Add the block back to the free list
-    *(uint8_t **)ptr = sfp->free_list;
-    sfp->free_list = (uint8_t *)ptr;
-    sfp->free_count++ ;
+    *(uint8_t **)ptr = pool->free_list;
+    pool->free_list = (uint8_t *)ptr;
+    pool->free_count++ ;
 #ifdef SECURE_ZERO
     // Zero out the block for security
-    secure_zero(ptr, sfp->block_size);
+    _secure_zero(ptr, pool->block_size);
 #endif
     return true;
   } else {
@@ -173,37 +159,49 @@ bool sfpool_free(void *restrict pool, void *ptr) {
   }
 }
 
-#ifdef FALLBACK
 // Reallocate memory
-void *sfpool_realloc(void *restrict pool, void *ptr, const size_t size) {
-  if (!ptr) return sfpool_malloc(pool, size);
-  if (size == 0) { sfpool_free(pool, ptr); return NULL; }
-  sfpool_t *sfp = (sfpool_t*) pool;
-  if (is_in_pool(sfp, ptr)) {
-    if (size <= sfp->block_size) {
+void *sfpool_realloc(sfpool_t *restrict pool, void *ptr, const size_t size) {
+  if (ptr == NULL) {
+    return sfpool_malloc(pool, size);
+  }
+  if (size == 0) {
+    sfpool_free(pool, ptr);
+    return NULL;
+  }
+  if (_is_in_pool((sfpool_t*)pool,ptr)) {
+    if (size <= pool->block_size) {
       return ptr; // No need to reallocate
     } else {
       void *new_ptr = malloc(size);
-      memcpy(new_ptr, ptr, sfp->block_size); // Copy all block bytes
+      memcpy(new_ptr, ptr, pool->block_size); // Copy only BLOCK_SIZE bytes
 #ifdef SECURE_ZERO
-      secure_zero(ptr, sfp->block_size); // Zero out the old block
+      _secure_zero(ptr, pool->block_size); // Zero out the old block
 #endif
-      sfpool_free(pool, ptr);
+      // Add the block back to the free list
+      *(uint8_t **)ptr = pool->free_list;
+      pool->free_list = (uint8_t *)ptr;
+      pool->free_count++ ;
+#ifdef SECURE_ZERO
+      // Zero out the block for security
+      _secure_zero(ptr, pool->block_size);
+#endif
       return new_ptr;
     }
   } else {
+#ifdef FALLBACK
     // Handle large allocations
     return realloc(ptr, size);
-  }
-  return NULL;
-}
+#else
+    return NULL;
 #endif
+  }
+}
 
 // Debug function to print memory manager state
-void sfpool_status(void *restrict pool) {
-  sfpool_t *p = (sfpool_t*)pool;
+void sfpool_status(sfpool_t *restrict p) {
+  fprintf(stderr,"🌊 Sailfish pool \t %u blocks %u B each\n",
+          p->total_blocks, p->block_size);
   fprintf(stderr,"🌊 Sailfish pool \t %u \t allocations managed\n",
           p->total_blocks - p->free_count);
 }
-
 #endif
