@@ -20,6 +20,9 @@
  *
  */
 
+#ifndef __SFPOOL_H__
+#define __SFPOOL_H__
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -201,84 +204,6 @@ void sfpool_status(void *restrict pool) {
   sfpool_t *p = (sfpool_t*)pool;
   fprintf(stderr,"🌊 Sailfish pool \t %u \t allocations managed\n",
           p->total_blocks - p->free_count);
-}
-
-#if defined(SFPOOL_TEST) && defined(FALLBACK)
-#include <assert.h>
-#include <time.h>
-
-#ifndef NUM_ALLOCATIONS
-#define NUM_ALLOCATIONS 20000
-#endif
-
-#ifndef MAX_ALLOCATION_SIZE
-#define MAX_ALLOCATION_SIZE 256
-#endif
-
-#define BLOCKSIZE 128
-#define BLOCKNUM (2 * 8192) // two MiBs
-
-int main(int argc, char **argv) {
-  srand(time(NULL));
-  fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
-  void *pool = malloc(sizeof(sfpool_t));
-  if (!pool) {
-    perror("memory pool creation error");
-    return 1;
-  }
-  assert( sfpool_init(pool, BLOCKNUM, BLOCKSIZE) );
-  void *pointers[NUM_ALLOCATIONS];
-  int sizes[NUM_ALLOCATIONS];
-
-#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
-  fprintf(stderr,"Running in a 64-bit environment\n");
-#else
-  fprintf(stderr,"Running in a 32-bit environment\n");
-#endif
-  fprintf(stderr,"Testing with %u allocations\n",NUM_ALLOCATIONS);
-
-  fprintf(stderr,"Step 1: Allocate memory\n");
-  for (int i = 0; i < NUM_ALLOCATIONS; i++) {
-    size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
-    pointers[i] = sfpool_malloc(pool, size);
-    sizes[i] = size;
-    assert(pointers[i] != NULL); // Ensure allocation was successful
-  }
-  sfpool_status(pool);
-
-  fprintf(stderr,"Step 2: Free every other allocation\n");
-  for (int i = 0; i < NUM_ALLOCATIONS; i += 2) {
-    sfpool_free(pool, pointers[i]);
-    pointers[i] = NULL;
-  }
-  sfpool_status(pool);
-
-  fprintf(stderr,"Step 3: Reallocate remaining memory\n");
-  for (int i = 1; i < NUM_ALLOCATIONS; i += 2) {
-    size_t new_size = rand() % (MAX_ALLOCATION_SIZE*4) + 1;
-    pointers[i] = sfpool_realloc(pool, pointers[i], new_size);
-    assert(pointers[i] != NULL); // Ensure reallocation was successful
-  }
-  sfpool_status(pool);
-
-  fprintf(stderr,"Step 4: Free all memory\n");
-  for (int i = 0; i < NUM_ALLOCATIONS; i++) {
-    if (pointers[i] != NULL) {
-      sfpool_free(pool, pointers[i]);
-      pointers[i] = NULL;
-    }
-  }
-  sfpool_status(pool);
-
-  fprintf(stderr,"Step 5: Final check for memory leaks\n");
-  for (int i = 0; i < NUM_ALLOCATIONS; i++) {
-    assert(pointers[i] == NULL); // Ensure all pointers are freed
-  }
-
-  sfpool_teardown(pool);
-  free(pool);
-  printf("Sailfish Pool test passed successfully.\n");
-  return 0;
 }
 
 #endif
