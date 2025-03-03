@@ -35,6 +35,10 @@
 #include <sys/mman.h>
 #endif
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 // Configuration
 #define BLOCK_SIZE 128
 static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
@@ -76,19 +80,20 @@ static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
 static inline void pool_init(fastpool_t *pool, uint32_t bytesize) {
 #if defined(__EMSCRIPTEN__)
   pool->data = (uint8_t *)sys_malloc(bytesize);
+
+#elif defined(_WIN32)
+  pool->data = VirtualAlloc(NULL, bytesize,
+                            MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+#else // Posix
+  pool->data = mmap(NULL, bytesize, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
+                    , -1, 0);
+#endif
   if (pool->data == NULL) {
     fprintf(stderr, "Failed to allocate pool memory\n");
     exit(EXIT_FAILURE);
   }
-#else
-  pool->data = mmap(NULL, bytesize, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
-                    , -1, 0);
-  if (pool->data == NULL || pool->data == MAP_FAILED) {
-    fprintf(stderr, "Failed to allocate pool memory\n");
-    exit(EXIT_FAILURE);
-  }
-#endif
 
   pool->total_bytes = bytesize;
   pool->total_blocks = bytesize / BLOCK_SIZE;
@@ -148,7 +153,9 @@ void fastalloc32_destroy(void *restrict pool) {
   // Free pool memory
 #if defined(__EMSCRIPTEN__)
   sys_free(p->data);
-#else
+#elif defined(_WIN32)
+  VirtualFree(p->data, 0, MEM_RELEASE);
+#else // Posix
   munmap(p->data, p->total_bytes);
 #endif
   sys_free(pool);
@@ -207,12 +214,12 @@ void *fastalloc32_realloc(void *restrict pool, void *ptr, const size_t size) {
   }
 }
 
-// // Debug function to print memory manager state
-// void fastalloc32_debug(void *restrict pool) {
-//   fastalloc32_mm *restrict manager = arg_manager(mm);
-//   printf("Pool free blocks: %u/%u\n",
-//          manager->pool.free_count, manager->pool.total_blocks);
-// }
+// Debug function to print memory manager state
+void fastalloc32_status(void *restrict pool) {
+  fastpool_t *p = (fastpool_t*)pool;
+  fprintf(stderr,"⚡fastpool32 \t %u \t allocations managed\n",
+          p->total_blocks - p->free_count);
+}
 
 #if defined(FASTALLOC32_TEST)
 #include <assert.h>
