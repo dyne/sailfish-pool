@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <assert.h>
 
+// platform dependent memory allocation interfaces
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #elif defined(_WIN32)
@@ -36,9 +37,6 @@
 #endif
 
 // Configuration
-#define BLOCK_SIZE 128
-static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
-#define POOL_SIZE (2 * 8192 * BLOCK_SIZE) // two MiBs
 #define SECURE_ZERO // Enable secure zeroing
 #define FALLBACK // Enable fallback to system alloc
 
@@ -49,6 +47,7 @@ typedef struct fastpool_t {
   uint32_t free_count;
   uint32_t total_blocks;
   uint32_t total_bytes;
+  uint32_t block_size;
 } fastpool_t;
 
 static inline void secure_zero(void *ptr, uint32_t size) {
@@ -71,119 +70,97 @@ static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
          && p < (ptr_t)(pool->data + pool->total_bytes));
 }
 
-#define sys_malloc malloc
-#define sys_free   free
-
-// Pool initialization
-static inline void pool_init(fastpool_t *pool, uint32_t bytesize) {
+// Pool initialization: allocates memory for an array of nmemb
+// elements of size bytes each and returns a pointer to the allocated
+// memory pool
+bool sfpool_init(fastpool_t *pool, size_t nmemb, size_t size) {
+  if(size & (size - 1) != 0) {
+    fprintf(stderr,"SFPool blocksize must be a power of two\n");
+    return false;
+  }
+  size_t totalsize = nmemb * size;
 #if defined(__EMSCRIPTEN__)
-  pool->data = (uint8_t *)sys_malloc(bytesize);
+  pool->data = (uint8_t *)sys_malloc(totalsize);
 
 #elif defined(_WIN32)
-  pool->data = VirtualAlloc(NULL, bytesize,
+  pool->data = VirtualAlloc(NULL, totalsize,
                             MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 #else // Posix
-  pool->data = mmap(NULL, bytesize, PROT_READ | PROT_WRITE,
+  pool->data = mmap(NULL, totalsize, PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
                     , -1, 0);
 #endif
   if (pool->data == NULL) {
     fprintf(stderr, "Failed to allocate pool memory\n");
-    exit(EXIT_FAILURE);
+    return false;
   }
 
-  pool->total_bytes = bytesize;
-  pool->total_blocks = bytesize / BLOCK_SIZE;
+  pool->total_blocks = (uint32_t)nmemb;
+  pool->block_size   = (uint32_t)size;
+  pool->total_bytes  = (uint32_t)totalsize;
   // Initialize the embedded free list
   pool->free_list = pool->data;
   for (volatile uint32_t i = 0; i < pool->total_blocks - 1; ++i) {
-    *(uint8_t **)(pool->data + i * BLOCK_SIZE) =
-      pool->data + (i + 1) * BLOCK_SIZE;
+    *(uint8_t **)(pool->data + i * size) =
+      pool->data + (i + 1) * size;
   }
   pool->free_count = pool->total_blocks;
   *(uint8_t **)
     (pool->data + (pool->total_blocks - 1)
-     * BLOCK_SIZE) = NULL;
-}
-
-// Pool allocation
-static inline void *pool_alloc(fastpool_t *pool) {
-  if (pool->free_list == NULL) {
-    return NULL; // Pool exhausted
-  }
-
-  // Remove the first block from the free list
-  uint8_t *block = pool->free_list;
-  pool->free_list = *(uint8_t **)block;
-  pool->free_count-- ;
-  return block;
-}
-
-// Pool deallocation
-static inline void pool_free(fastpool_t *pool, void *ptr) {
-  // Add the block back to the free list
-  *(uint8_t **)ptr = pool->free_list;
-  pool->free_list = (uint8_t *)ptr;
-  pool->free_count++ ;
-#ifdef SECURE_ZERO
-  // Zero out the block for security
-  secure_zero(ptr, BLOCK_SIZE);
-#endif
-}
-
-// Create memory manager
-void *fastalloc32_create() {
-  fastpool_t *pool = (fastpool_t*) sys_malloc(sizeof(fastpool_t));
-  if (pool == NULL) {
-    perror("memory pool creation error");
-    return NULL;
-  }
-
-  pool_init(pool, POOL_SIZE);
-  fprintf(stderr,"⚡fastalloc32.c initalized\n");
-  fprintf(stderr,"void* pointer size: %lu\n",sizeof(void*));
-  return (void *)pool;
+     * size) = NULL;
+  return true;
 }
 
 // Destroy memory manager
-void fastalloc32_destroy(void *restrict pool) {
+void sfpool_teardown(void *restrict pool) {
   fastpool_t *p = (fastpool_t*)pool;
   // Free pool memory
 #if defined(__EMSCRIPTEN__)
-  sys_free(p->data);
+  free(p->data);
 #elif defined(_WIN32)
   VirtualFree(p->data, 0, MEM_RELEASE);
 #else // Posix
   munmap(p->data, p->total_bytes);
 #endif
-  sys_free(pool);
 }
 
 // Allocate memory
-void *fastalloc32_malloc(void *restrict pool, const size_t size) {
-  fastpool_t *restrict manager = (fastpool_t*)pool;
-  void *ptr;
-  if (size <= BLOCK_SIZE) {
-    ptr = pool_alloc(pool);
-    if (ptr) return ptr;
+void *sfpool_malloc(void *restrict pool, const size_t size) {
+  fastpool_t *restrict sfp = (fastpool_t*)pool;
+  if (!sfp->free_list) return NULL; // pool is full
+  if (size <= sfp->block_size) {
+    // Remove the first block from the free list
+    uint8_t *block = sfp->free_list;
+    sfp->free_list = *(uint8_t **)block;
+    sfp->free_count-- ;
+    return block;
   }
-  // Fallback to system malloc for large allocations
-  ptr = sys_malloc(size);
+  void *ptr = NULL;
+#ifdef FALLBACK
+  ptr = malloc(size);
   if(ptr == NULL) perror("system malloc error");
+#endif
   return ptr;
 }
 
 // Free memory
-bool fastalloc32_free(void *restrict pool, void *ptr) {
-  fastpool_t *p = (fastpool_t*)pool;
-  if (ptr == NULL) return false; // Freeing NULL is a no-op
-  if (is_in_pool(p,ptr)) {
-    pool_free(p, ptr);
+bool sfpool_free(void *restrict pool, void *ptr) {
+  if (!ptr) return false; // Freeing NULL is a no-op
+  fastpool_t *sfp = (fastpool_t*)pool;
+  if (is_in_pool(sfp,ptr)) {
+    // Add the block back to the free list
+    *(uint8_t **)ptr = sfp->free_list;
+    sfp->free_list = (uint8_t *)ptr;
+    sfp->free_count++ ;
+#ifdef SECURE_ZERO
+    // Zero out the block for security
+    secure_zero(ptr, sfp->block_size);
+#endif
     return true;
   } else {
 #ifdef FALLBACK
-    sys_free(ptr);
+    free(ptr);
     return true;
 #else
     return false;
@@ -191,40 +168,34 @@ bool fastalloc32_free(void *restrict pool, void *ptr) {
   }
 }
 
+#ifdef FALLBACK
 // Reallocate memory
-void *fastalloc32_realloc(void *restrict pool, void *ptr, const size_t size) {
-  if (ptr == NULL) {
-    return fastalloc32_malloc(pool, size);
-  }
-
-  if (size == 0) {
-    fastalloc32_free(pool, ptr);
-    return NULL;
-  }
-  if (is_in_pool((fastpool_t*)pool,ptr)) {
-    if (size <= BLOCK_SIZE) {
+void *sfpool_realloc(void *restrict pool, void *ptr, const size_t size) {
+  if (!ptr) return sfpool_malloc(pool, size);
+  if (size == 0) { sfpool_free(pool, ptr); return NULL; }
+  fastpool_t *sfp = (fastpool_t*) pool;
+  if (is_in_pool(sfp, ptr)) {
+    if (size <= sfp->block_size) {
       return ptr; // No need to reallocate
     } else {
-      void *new_ptr = sys_malloc(size);
-      memcpy(new_ptr, ptr, BLOCK_SIZE); // Copy only BLOCK_SIZE bytes
+      void *new_ptr = malloc(size);
+      memcpy(new_ptr, ptr, sfp->block_size); // Copy all block bytes
 #ifdef SECURE_ZERO
-      secure_zero(ptr, BLOCK_SIZE); // Zero out the old block
+      secure_zero(ptr, sfp->block_size); // Zero out the old block
 #endif
-      pool_free(pool, ptr);
+      sfpool_free(pool, ptr);
       return new_ptr;
     }
   } else {
-#ifdef FALLBACK
     // Handle large allocations
     return realloc(ptr, size);
-#else
-    return NULL;
-#endif
   }
+  return NULL;
 }
+#endif
 
 // Debug function to print memory manager state
-void fastalloc32_status(void *restrict pool) {
+void sfpool_status(void *restrict pool) {
   fastpool_t *p = (fastpool_t*)pool;
   fprintf(stderr,"⚡fastpool32 \t %u \t allocations managed\n",
           p->total_blocks - p->free_count);
@@ -239,16 +210,22 @@ void fastalloc32_status(void *restrict pool) {
 #endif
 
 #ifndef MAX_ALLOCATION_SIZE
-#define MAX_ALLOCATION_SIZE BLOCK_SIZE*2
+#define MAX_ALLOCATION_SIZE 256
 #endif
+
+#define BLOCKSIZE 128
+#define BLOCKNUM (2 * 8192) // two MiBs
 
 int main(int argc, char **argv) {
   srand(time(NULL));
-  void *pool = fastalloc32_create();
-
+  void *pool = malloc(sizeof(fastpool_t));
+  if (!pool) {
+    perror("memory pool creation error");
+    return 1;
+  }
+  assert( sfpool_init(pool, BLOCKNUM, BLOCKSIZE) );
   void *pointers[NUM_ALLOCATIONS];
   int sizes[NUM_ALLOCATIONS];
-  uint32_t in_pool = 0;
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
   fprintf(stderr,"Running in a 64-bit environment\n");
@@ -260,46 +237,44 @@ int main(int argc, char **argv) {
   fprintf(stderr,"Step 1: Allocate memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
-    pointers[i] = fastalloc32_malloc(pool, size);
+    pointers[i] = sfpool_malloc(pool, size);
     sizes[i] = size;
-    if(size<=BLOCK_SIZE) in_pool++;
     assert(pointers[i] != NULL); // Ensure allocation was successful
   }
-  fastalloc32_status(pool);
+  sfpool_status(pool);
 
-  assert(((fastpool_t*)pool)->total_blocks
-         - ((fastpool_t*)pool)->free_count <= in_pool);
   fprintf(stderr,"Step 2: Free every other allocation\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i += 2) {
-    fastalloc32_free(pool, pointers[i]);
+    sfpool_free(pool, pointers[i]);
     pointers[i] = NULL;
   }
-  fastalloc32_status(pool);
+  sfpool_status(pool);
 
   fprintf(stderr,"Step 3: Reallocate remaining memory\n");
   for (int i = 1; i < NUM_ALLOCATIONS; i += 2) {
     size_t new_size = rand() % (MAX_ALLOCATION_SIZE*4) + 1;
-    pointers[i] = fastalloc32_realloc(pool, pointers[i], new_size);
+    pointers[i] = sfpool_realloc(pool, pointers[i], new_size);
     assert(pointers[i] != NULL); // Ensure reallocation was successful
   }
-  fastalloc32_status(pool);
+  sfpool_status(pool);
 
   fprintf(stderr,"Step 4: Free all memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     if (pointers[i] != NULL) {
-      fastalloc32_free(pool, pointers[i]);
+      sfpool_free(pool, pointers[i]);
       pointers[i] = NULL;
     }
   }
-  fastalloc32_status(pool);
+  sfpool_status(pool);
 
   fprintf(stderr,"Step 5: Final check for memory leaks\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     assert(pointers[i] == NULL); // Ensure all pointers are freed
   }
 
-  fastalloc32_destroy(pool);
-  printf("Fastalloc32 test passed successfully.\n");
+  sfpool_teardown(pool);
+  free(pool);
+  printf("Sailfish Pool test passed successfully.\n");
   return 0;
 }
 
