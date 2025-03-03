@@ -24,7 +24,7 @@ emsdk_ldflags := ${ld_emsdk_optimizations} ${ld_emsdk_settings}
 
 sfpool_test:
 	$(info Build sfpool test.)
-	$(CC) $(CFLAGS) -DSFPOOL_TEST sfpool.c -o sfpool_test
+	$(CC) $(CFLAGS) -I. sfpool_test.c -o sfpool_test
 
 check: sfpool_test
 	$(info Run sfpool test and measure timing.)
