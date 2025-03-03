@@ -9,6 +9,7 @@ SPDX-PackageDownloadLocation = "https://github.com/dyne/fastmempool32"
 
 [[annotations]]
 path = [
+    "*.jpg",
     ".github/**",
     ".gitignore"
 ]

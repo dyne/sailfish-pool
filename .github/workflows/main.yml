@@ -59,7 +59,7 @@ jobs:
     - name: Build GNU/Linux ${{ matrix.command }}
       run: |
         make ${{ matrix.command }}
-        time ./fastalloc32_test
+        time ./sfpool_test
 
   win-native-test:
     name: 🪟 Windows native test
@@ -70,7 +70,7 @@ jobs:
       - name: Test on native windows
         run: |
           make CC=gcc CFLAGS="-g"
-          .\fastalloc32_test
+          .\sfpool_test
 
   osx-native-test:
     name: 🍎 OSX native test
@@ -81,7 +81,7 @@ jobs:
       - name: Test on native Apple/OSX
         run: |
           make CC=clang CFLAGS="-g"
-          time ./fastalloc32_test
+          time ./sfpool_test
 
   arm32-test:
     name: 🦾 ARM32 build test
@@ -95,7 +95,7 @@ jobs:
         with:
           commands: |
             make CC=gcc CFLAGS="-g"
-            ./fastalloc32_test
+            ./sfpool_test
 
   js-build-check:
     name: 🐯 NodeJS WASM test
