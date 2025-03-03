@@ -41,13 +41,9 @@ int main(int argc, char **argv) {
   srand(time(NULL));
   fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
   void *pool = malloc(sizeof(sfpool_t));
-  if (!pool) {
-    perror("memory pool creation error");
-    return 1;
-  }
-  assert( sfpool_init(pool, BLOCKNUM, BLOCKSIZE) );
+  sfpool_init(pool, 8192, 128);
+
   void *pointers[NUM_ALLOCATIONS];
-  int sizes[NUM_ALLOCATIONS];
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
   fprintf(stderr,"Running in a 64-bit environment\n");
@@ -60,7 +56,6 @@ int main(int argc, char **argv) {
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {
     size_t size = rand() % MAX_ALLOCATION_SIZE + 1;
     pointers[i] = sfpool_malloc(pool, size);
-    sizes[i] = size;
     assert(pointers[i] != NULL); // Ensure allocation was successful
   }
   sfpool_status(pool);

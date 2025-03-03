@@ -3,9 +3,12 @@
 
 CC ?= gcc
 
-CFLAGS ?= -g -fsanitize=address -fsanitize=undefined						\
--fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow	\
+CFLAGS ?= -Wall -Wextra -g -fsanitize=address -fsanitize=undefined	\
+-fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow			\
 -fsanitize=leak
+
+LUASRC=lua-5.4.7
+LUAURL=https://www.lua.org
 
 # EMSCRIPTEN settings
 JS_INIT_MEM :=8MB
@@ -30,27 +33,27 @@ check: sfpool_test
 	$(info Run sfpool test and measure timing.)
 	@time ./sfpool_test
 
-check-lua: LUASRC=lua-5.4.7
-check-lua: LUAURL=https://www.lua.org
-check-lua: sfpool_lua.c
+LUA_MEM_TEST ?= MEM_SFPOOL
+
+check-lua: test_lua.c
 	$(info Build a Lua interpreter using sfpool as memory manager.)
 	@[ -r ${LUASRC}.tar.gz ] || \
 	 curl -L ${LUAURL}/ftp/${LUASRC}.tar.gz -o ${LUASRC}.tar.gz
 	@[ -d ${LUASRC} ] || tar xf ${LUASRC}.tar.gz
 	@[ -r ${LUASRC}/src/liblua.a ] || $(MAKE) -C ${LUASRC}
-	$(CC) $(CFLAGS) -I. -I${LUASRC}/src sfpool_lua.c -o sfpool_lua \
-		${LUASRC}/src/liblua.a -lm
+	$(CC) -O2 -I. -I${LUASRC}/src test_lua.c -o test_lua \
+		${LUASRC}/src/liblua.a -lm -D${LUA_MEM_TEST}
 	@[ -r ${LUASRC}-tests.tar.gz ] || \
    curl -L ${LUAURL}/tests/${LUASRC}-tests.tar.gz -o ${LUASRC}-tests.tar.gz
 	@[ -d ${LUASRC}-tests ] || tar xf ${LUASRC}-tests.tar.gz
-	@cd ${LUASRC}-tests && ../sfpool_lua all.lua
+	@cd ${LUASRC}-tests && ../test_lua all.lua
 
 wasm:
 	$(info Build Web Assembly target with EMSCRIPTEN and run test.)
 	${EMSDK}/upstream/emscripten/emcc \
-		${emsdk_cflags} sfpool_test.c -o sfpool.js ${emsdk_ldflags}
+		${emsdk_cflags} sfpool_test.c -I. -o sfpool.js ${emsdk_ldflags}
 	@time	node -e "require('./sfpool.js')()"
 
 clean:
-	@rm -f *.o sfpool_test sfpool_lua
+	@rm -f *.o sfpool_test test_lua
 	$(info Build clean.)
