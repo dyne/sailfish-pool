@@ -31,6 +31,7 @@ running thread.
 
 ## Features
 
+- **Portable**: Tested to run on 32 and 64 bit targets: Apple/OSX and MS/Windows, ARM and x86 as well WASM
 - **Pool Allocator**: Efficiently manages small, fixed-size memory blocks using a preallocated memory pool.
 - **Secure Zeroing**: Ensures all memory is zeroed out before free to protect sensitive information.
 - **Reallocation Support**: Supports `realloc()` for both pool and large memory blocks, handling transitions.
@@ -62,7 +63,7 @@ in your build and use the provided functions.
 No need for a header, just declare some externs:
 
 ```c
-extern bool sfpool_init     (void *restrict pool);
+extern bool sfpool_init     (void *pool, size_t nmemb, size_t size);
 extern void sfpool_teardown (void *restrict pool);
 extern void *sfpool_malloc  (void *restrict pool, size_t size);
 extern void *sfpool_realloc (void *restrict pool, void *ptr, size_t size);
