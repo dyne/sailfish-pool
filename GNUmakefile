@@ -22,24 +22,24 @@ cc_emsdk_optimizations := -g -sUSE_SDL=0 -sEVAL_CTORS=1
 emsdk_cflags  := ${cc_emsdk_optimizations}
 emsdk_ldflags := ${ld_emsdk_optimizations} ${ld_emsdk_settings}
 
-fastalloc32_test:
-	$(info Build fastalloc32 test.)
-	$(CC) $(CFLAGS) -DFASTALLOC32_TEST fastalloc32.c -o fastalloc32_test
+sfpool_test:
+	$(info Build sfpool test.)
+	$(CC) $(CFLAGS) -DSFPOOL_TEST sfpool.c -o sfpool_test
 
-check: fastalloc32_test
-	$(info Run fastalloc32 test and measure timing.)
-	@time ./fastalloc32_test
+check: sfpool_test
+	$(info Run sfpool test and measure timing.)
+	@time ./sfpool_test
 
 lib:
-	$(info Build libfastalloc32.so)
-	$(CC) -O3 -fPIC -shared fastalloc32.c -o libfastalloc32.so
+	$(info Build libsfpool.so)
+	$(CC) -O3 -fPIC -shared sfpool.c -o libsfpool.so
 
 wasm:
 	$(info Build Web Assembly target with EMSCRIPTEN and run test.)
 	${EMSDK}/upstream/emscripten/emcc \
-		${emsdk_cflags} -DFASTALLOC32_TEST fastalloc32.c -o fastalloc32.js ${emsdk_ldflags}
-	@time	node -e "require('./fastalloc32.js')()"
+		${emsdk_cflags} -DSFPOOL_TEST sfpool.c -o sfpool.js ${emsdk_ldflags}
+	@time	node -e "require('./sfpool.js')()"
 
 clean:
-	@rm -f *.o fastalloc32_test
+	@rm -f *.o sfpool_test
 	$(info Build clean.)

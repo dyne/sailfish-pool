@@ -41,14 +41,14 @@
 #define FALLBACK // Enable fallback to system alloc
 
 // Memory pool structure
-typedef struct fastpool_t {
+typedef struct sfpool_t {
   uint8_t *data;
   uint8_t *free_list; // Pointer to the first free block
   uint32_t free_count;
   uint32_t total_blocks;
   uint32_t total_bytes;
   uint32_t block_size;
-} fastpool_t;
+} sfpool_t; // must keep to 32 bytes
 
 static inline void secure_zero(void *ptr, uint32_t size) {
   volatile uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
@@ -56,15 +56,17 @@ static inline void secure_zero(void *ptr, uint32_t size) {
   while (s--) *p++ = 0x0; // hit the road jack
 }
 
-
 #if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
 #define ptr_t uint64_t
+#define sfpool_size 32
 #else
 #define ptr_t uint32_t
+#define sfpool_size 24
 #endif
 static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
+static_assert(sizeof(sfpool_t) == sfpool_size, "Size of sfpool_t is not 32 bytes");
 
-static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
+static inline bool is_in_pool(sfpool_t *pool, const void *ptr) {
   volatile ptr_t p = (ptr_t)ptr;
   return(p >= (ptr_t)pool->data
          && p < (ptr_t)(pool->data + pool->total_bytes));
@@ -73,14 +75,14 @@ static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
 // Pool initialization: allocates memory for an array of nmemb
 // elements of size bytes each and returns a pointer to the allocated
 // memory pool
-bool sfpool_init(fastpool_t *pool, size_t nmemb, size_t size) {
+bool sfpool_init(sfpool_t *pool, size_t nmemb, size_t size) {
   if(size & (size - 1) != 0) {
     fprintf(stderr,"SFPool blocksize must be a power of two\n");
     return false;
   }
   size_t totalsize = nmemb * size;
 #if defined(__EMSCRIPTEN__)
-  pool->data = (uint8_t *)sys_malloc(totalsize);
+  pool->data = (uint8_t *)malloc(totalsize);
 
 #elif defined(_WIN32)
   pool->data = VirtualAlloc(NULL, totalsize,
@@ -114,7 +116,7 @@ bool sfpool_init(fastpool_t *pool, size_t nmemb, size_t size) {
 
 // Destroy memory manager
 void sfpool_teardown(void *restrict pool) {
-  fastpool_t *p = (fastpool_t*)pool;
+  sfpool_t *p = (sfpool_t*)pool;
   // Free pool memory
 #if defined(__EMSCRIPTEN__)
   free(p->data);
@@ -127,7 +129,7 @@ void sfpool_teardown(void *restrict pool) {
 
 // Allocate memory
 void *sfpool_malloc(void *restrict pool, const size_t size) {
-  fastpool_t *restrict sfp = (fastpool_t*)pool;
+  sfpool_t *restrict sfp = (sfpool_t*)pool;
   if (!sfp->free_list) return NULL; // pool is full
   if (size <= sfp->block_size) {
     // Remove the first block from the free list
@@ -147,7 +149,7 @@ void *sfpool_malloc(void *restrict pool, const size_t size) {
 // Free memory
 bool sfpool_free(void *restrict pool, void *ptr) {
   if (!ptr) return false; // Freeing NULL is a no-op
-  fastpool_t *sfp = (fastpool_t*)pool;
+  sfpool_t *sfp = (sfpool_t*)pool;
   if (is_in_pool(sfp,ptr)) {
     // Add the block back to the free list
     *(uint8_t **)ptr = sfp->free_list;
@@ -173,7 +175,7 @@ bool sfpool_free(void *restrict pool, void *ptr) {
 void *sfpool_realloc(void *restrict pool, void *ptr, const size_t size) {
   if (!ptr) return sfpool_malloc(pool, size);
   if (size == 0) { sfpool_free(pool, ptr); return NULL; }
-  fastpool_t *sfp = (fastpool_t*) pool;
+  sfpool_t *sfp = (sfpool_t*) pool;
   if (is_in_pool(sfp, ptr)) {
     if (size <= sfp->block_size) {
       return ptr; // No need to reallocate
@@ -196,12 +198,12 @@ void *sfpool_realloc(void *restrict pool, void *ptr, const size_t size) {
 
 // Debug function to print memory manager state
 void sfpool_status(void *restrict pool) {
-  fastpool_t *p = (fastpool_t*)pool;
-  fprintf(stderr,"⚡fastpool32 \t %u \t allocations managed\n",
+  sfpool_t *p = (sfpool_t*)pool;
+  fprintf(stderr,"🌊 Sailfish pool \t %u \t allocations managed\n",
           p->total_blocks - p->free_count);
 }
 
-#if defined(FASTALLOC32_TEST) && defined(FALLBACK)
+#if defined(SFPOOL_TEST) && defined(FALLBACK)
 #include <assert.h>
 #include <time.h>
 
@@ -218,7 +220,8 @@ void sfpool_status(void *restrict pool) {
 
 int main(int argc, char **argv) {
   srand(time(NULL));
-  void *pool = malloc(sizeof(fastpool_t));
+  fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
+  void *pool = malloc(sizeof(sfpool_t));
   if (!pool) {
     perror("memory pool creation error");
     return 1;
