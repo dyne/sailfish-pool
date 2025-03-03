@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2025 Dyne.org foundation
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+version = 1
+SPDX-PackageName = "fastmempool32"
+SPDX-PackageSupplier = "Denis Roio <jaromil@dyne.org>"
+SPDX-PackageDownloadLocation = "https://github.com/dyne/fastmempool32"
+
+[[annotations]]
+path = [
+    ".github/**",
+    ".gitignore"
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Dyne.org foundation"
+SPDX-License-Identifier = "GPL-3.0-or-later"
