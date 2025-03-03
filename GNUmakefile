@@ -30,16 +30,27 @@ check: sfpool_test
 	$(info Run sfpool test and measure timing.)
 	@time ./sfpool_test
 
-lib:
-	$(info Build libsfpool.so)
-	$(CC) -O3 -fPIC -shared sfpool.c -o libsfpool.so
+check-lua: LUASRC=lua-5.4.7
+check-lua: LUAURL=https://www.lua.org
+check-lua: sfpool_lua.c
+	$(info Build a Lua interpreter using sfpool as memory manager.)
+	@[ -r ${LUASRC}.tar.gz ] || \
+	 curl -L ${LUAURL}/ftp/${LUASRC}.tar.gz -o ${LUASRC}.tar.gz
+	@[ -d ${LUASRC} ] || tar xf ${LUASRC}.tar.gz
+	@[ -r ${LUASRC}/src/liblua.a ] || $(MAKE) -C ${LUASRC}
+	$(CC) $(CFLAGS) -I. -I${LUASRC}/src sfpool_lua.c -o sfpool_lua \
+		${LUASRC}/src/liblua.a -lm
+	@[ -r ${LUASRC}-tests.tar.gz ] || \
+   curl -L ${LUAURL}/tests/${LUASRC}-tests.tar.gz -o ${LUASRC}-tests.tar.gz
+	@[ -d ${LUASRC}-tests ] || tar xf ${LUASRC}-tests.tar.gz
+	@cd ${LUASRC}-tests && ../sfpool_lua all.lua
 
 wasm:
 	$(info Build Web Assembly target with EMSCRIPTEN and run test.)
 	${EMSDK}/upstream/emscripten/emcc \
-		${emsdk_cflags} -DSFPOOL_TEST sfpool.c -o sfpool.js ${emsdk_ldflags}
+		${emsdk_cflags} sfpool_test.c -o sfpool.js ${emsdk_ldflags}
 	@time	node -e "require('./sfpool.js')()"
 
 clean:
-	@rm -f *.o sfpool_test
+	@rm -f *.o sfpool_test sfpool_lua
 	$(info Build clean.)
