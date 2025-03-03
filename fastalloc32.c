@@ -31,18 +31,16 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#elif defined(_WIN32)
+#include <windows.h>
 #else
 #include <sys/mman.h>
-#endif
-
-#if defined(_WIN32)
-#include <windows.h>
 #endif
 
 // Configuration
 #define BLOCK_SIZE 128
 static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of two");
-#define POOL_SIZE (4 * 8192 * BLOCK_SIZE) // one MiB
+#define POOL_SIZE (2 * 8192 * BLOCK_SIZE) // two MiBs
 #define SECURE_ZERO // Enable secure zeroing
 
 // Memory pool structure
@@ -61,12 +59,13 @@ static inline void secure_zero(void *ptr, uint32_t size) {
 }
 
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__)
-#define ptr_t intptr_t
+#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
+#define ptr_t uint64_t
 #else
 #define ptr_t uint32_t
 #endif
 static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
+
 static inline bool is_in_pool(fastpool_t *pool, const void *ptr) {
   volatile ptr_t p = (ptr_t)ptr;
   return(p >= (ptr_t)pool->data
@@ -143,7 +142,8 @@ void *fastalloc32_create() {
   }
 
   pool_init(pool, POOL_SIZE);
-  // fprintf(stderr,"⚡fastalloc32.c initalized\n");
+  fprintf(stderr,"⚡fastalloc32.c initalized\n");
+  fprintf(stderr,"void* pointer size: %lu\n",sizeof(void*));
   return (void *)pool;
 }
 
@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
   int sizes[NUM_ALLOCATIONS];
   uint32_t in_pool = 0;
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__)
+#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
   fprintf(stderr,"Running in a 64-bit environment\n");
 #else
   fprintf(stderr,"Running in a 32-bit environment\n");
