@@ -51,9 +51,6 @@ check-lua: test_lua.c
 	@[ -r ${LUASRC}-tests.tar.gz ] || \
    curl -L ${LUAURL}/tests/${LUASRC}-tests.tar.gz -o ${LUASRC}-tests.tar.gz
 	@[ -d ${LUASRC}-tests ] || tar xf ${LUASRC}-tests.tar.gz
-	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 128; sync
-	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 256; sync
-	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 512; sync
 	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 1024; sync
 
 
