@@ -45,14 +45,14 @@ void *custom_lua_mem(void *ud, void *ptr, size_t osize, size_t nsize);
 #endif
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <lua_script_path>\n", argv[0]);
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s <lua_script_path> blocks blocksize\n", argv[0]);
         return 1;
     }
     const char* script_path = argv[1];
 #if defined(MEM_SFPOOL)
     SFP = malloc(sizeof(sfpool_t));
-    sfpool_init(SFP, 8192,256);
+    sfpool_init(SFP, atoi(argv[2]),atoi(argv[3]));
 #endif
     lua_State* L = lua_newstate(custom_lua_mem, NULL);
     if (!L) {

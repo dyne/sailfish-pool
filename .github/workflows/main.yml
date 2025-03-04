@@ -59,11 +59,10 @@ jobs:
     - name: Test GNU/Linux ${{ matrix.command }}
       run: |
         make ${{ matrix.command }}
-        time ./sfpool_test
+        make check
     - name: Test Lua ${{ matrix.command }}
       run: |
-        make check-lua ${{ matrix.command }} LUA_MEM_TEST=MEM_SYSTEM
-        make clean check-lua ${{ matrix.command }} LUA_MEM_TEST=MEM_SFPOOL
+        make check-lua ${{ matrix.command }}
 
   win-native-test:
     name: 🪟 Windows native test
@@ -74,7 +73,7 @@ jobs:
       - name: Test on native windows
         run: |
           make CC=gcc CFLAGS="-g"
-          .\sfpool_test
+          .\sfpool_test 1024 128
 
   osx-native-test:
     name: 🍎 OSX native test
@@ -85,7 +84,7 @@ jobs:
       - name: Test on native Apple/OSX
         run: |
           make CC=clang CFLAGS="-g"
-          time ./sfpool_test
+          time ./sfpool_test 1024 128
 
   arm32-test:
     name: 🦾 ARM32 build test
@@ -99,7 +98,7 @@ jobs:
         with:
           commands: |
             make CC=gcc CFLAGS="-g"
-            ./sfpool_test
+            ./sfpool_test 1024 128
 
   js-build-check:
     name: 🐯 NodeJS WASM test

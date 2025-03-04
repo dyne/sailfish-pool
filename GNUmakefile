@@ -31,7 +31,15 @@ sfpool_test:
 
 check: sfpool_test
 	$(info Run sfpool test and measure timing.)
-	@time ./sfpool_test
+	@time ./sfpool_test 1024 128; sync
+	@time ./sfpool_test 2048 128; sync
+	@time ./sfpool_test 4096 128; sync
+	@time ./sfpool_test 1024 256; sync
+	@time ./sfpool_test 2048 256; sync
+	@time ./sfpool_test 4096 256; sync
+	@time ./sfpool_test 1024 512; sync
+	@time ./sfpool_test 2048 512; sync
+	@time ./sfpool_test 4096 512; sync
 
 LUA_MEM_TEST ?= MEM_SFPOOL
 
@@ -46,7 +54,11 @@ check-lua: test_lua.c
 	@[ -r ${LUASRC}-tests.tar.gz ] || \
    curl -L ${LUAURL}/tests/${LUASRC}-tests.tar.gz -o ${LUASRC}-tests.tar.gz
 	@[ -d ${LUASRC}-tests ] || tar xf ${LUASRC}-tests.tar.gz
-	@cd ${LUASRC}-tests && ../test_lua all.lua
+	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 128; sync
+	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 256; sync
+	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 512; sync
+	@cd ${LUASRC}-tests && time ../test_lua all.lua 1024 1024; sync
+
 
 wasm:
 	$(info Build Web Assembly target with EMSCRIPTEN and run test.)

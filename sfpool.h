@@ -55,6 +55,7 @@ typedef struct sfpool_t {
   size_t   hits_bytes;
   uint32_t miss_total;
   size_t   miss_bytes;
+  size_t   alloc_total;
 #endif
 } sfpool_t;
 
@@ -62,7 +63,8 @@ typedef struct sfpool_t {
 #define profile(pool,s) \
 if(s<pool->block_size) { pool->hits[s]++; \
 	pool->hits_total++; pool->hits_bytes+=s; }	\
-else { pool->miss_total++; pool->miss_bytes+=s; }
+else { pool->miss_total++; pool->miss_bytes+=s; } \
+pool->alloc_total+=s;
 #endif
 
 static inline void _secure_zero(void *ptr, uint32_t size) {
@@ -123,6 +125,7 @@ size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
   pool->hits = calloc(blocksize+4,sizeof(uint32_t));
   pool->miss_total = pool->miss_bytes = 0;
   pool->hits_total = pool->hits_bytes = 0;
+  pool->alloc_total = 0;
 #endif
   return totalsize;
 }
@@ -141,6 +144,7 @@ void sfpool_teardown(sfpool_t *restrict pool) {
   free(pool->hits);
   pool->miss_total = pool->miss_bytes = 0;
   pool->hits_total = pool->hits_bytes = 0;
+  pool->alloc_total = 0;
 #endif
 }
 
@@ -242,8 +246,10 @@ void sfpool_status(sfpool_t *restrict p) {
   fprintf(stderr,"\n🌊 sfpool: %u blocks %u B each\n",
           p->total_blocks, p->block_size);
 #ifdef PROFILING
-  fprintf(stderr,"🌊 Misses: %u - %lu K\n",p->miss_total,p->miss_bytes/1024);
-  fprintf(stderr,"🌊 Hits:   %u - %lu K\n",p->hits_total,p->hits_bytes/1024);
+  fprintf(stderr,"🌊 Total:  %lu K\n",
+          p->alloc_total/1024);
+  fprintf(stderr,"🌊 Misses: %lu K (%u calls)\n",p->miss_bytes/1024,p->miss_total);
+  fprintf(stderr,"🌊 Hits:   %lu K (%u calls)\n",p->hits_bytes/1024,p->hits_total);
   // for (uint32_t i = 1; i <= p->block_size; i++) {
   //   fprintf(stdout,"%u %u\n",i,hits[i]);
   // }
