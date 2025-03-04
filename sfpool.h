@@ -49,17 +49,20 @@ typedef struct sfpool_t {
   uint32_t total_blocks;
   uint32_t total_bytes;
   uint32_t block_size;
+#ifdef PROFILING
+  uint32_t *hits;
+  uint32_t hits_total;
+  size_t   hits_bytes;
+  uint32_t miss_total;
+  size_t   miss_bytes;
+#endif
 } sfpool_t;
 
 #ifdef PROFILING
-uint32_t *hits;
-uint32_t hits_total;
-size_t hits_bytes;
-uint32_t miss_total;
-size_t miss_bytes;
 #define profile(pool,s) \
-if(s<pool->block_size) { hits[s]++; hits_total++; hits_bytes+=s; } \
-else { miss_total++; miss_bytes+=s; }
+if(s<pool->block_size) { pool->hits[s]++; \
+	pool->hits_total++; pool->hits_bytes+=s; }	\
+else { pool->miss_total++; pool->miss_bytes+=s; }
 #endif
 
 static inline void _secure_zero(void *ptr, uint32_t size) {
@@ -117,9 +120,9 @@ size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
   *(uint8_t **)
     (pool->data + (pool->total_blocks - 1) * blocksize) = NULL;
 #ifdef PROFILING
-  hits = calloc(blocksize+4,sizeof(uint32_t));
-  miss_total = miss_bytes = 0;
-  hits_total = hits_bytes = 0;
+  pool->hits = calloc(blocksize+4,sizeof(uint32_t));
+  pool->miss_total = pool->miss_bytes = 0;
+  pool->hits_total = pool->hits_bytes = 0;
 #endif
   return totalsize;
 }
@@ -135,9 +138,9 @@ void sfpool_teardown(sfpool_t *restrict pool) {
   munmap(pool->data, pool->total_bytes);
 #endif
 #ifdef PROFILING
-  free(hits);
-  miss_total = miss_bytes = 0;
-  hits_total = hits_bytes = 0;
+  free(pool->hits);
+  pool->miss_total = pool->miss_bytes = 0;
+  pool->hits_total = pool->hits_bytes = 0;
 #endif
 }
 
@@ -239,8 +242,8 @@ void sfpool_status(sfpool_t *restrict p) {
   fprintf(stderr,"\n🌊 sfpool: %u blocks %u B each\n",
           p->total_blocks, p->block_size);
 #ifdef PROFILING
-  fprintf(stderr,"🌊 Misses: %u - %lu K\n",miss_total,miss_bytes/1024);
-  fprintf(stderr,"🌊 Hits:   %u - %lu K\n",hits_total,hits_bytes/1024);
+  fprintf(stderr,"🌊 Misses: %u - %lu K\n",p->miss_total,p->miss_bytes/1024);
+  fprintf(stderr,"🌊 Hits:   %u - %lu K\n",p->hits_total,p->hits_bytes/1024);
   // for (uint32_t i = 1; i <= p->block_size; i++) {
   //   fprintf(stdout,"%u %u\n",i,hits[i]);
   // }
