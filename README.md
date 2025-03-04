@@ -57,17 +57,17 @@ to accommodate these growing requirements.
 
 ## Usage
 
-To use the custom memory manager in your project, include `sfpool.c`
-in your build and use the provided functions.
+To use the custom memory manager in your project, include `sfpool.h`
+and use the provided functions.
 
-No need for a header, just declare some externs:
+You can also redefine malloc/free/realloc taking advantage of the
+opaque context pointers, this way you won't need to include our header
+everywhere and just declare some externs:
 
 ```c
-extern bool sfpool_init     (void *pool, size_t nmemb, size_t size);
-extern void sfpool_teardown (void *restrict pool);
-extern void *sfpool_malloc  (void *restrict pool, size_t size);
-extern void *sfpool_realloc (void *restrict pool, void *ptr, size_t size);
-extern bool  sfpool_free    (void *restrict pool, void *ptr);
+extern void *sfpool_malloc (void *restrict opaque, const size_t size);
+extern bool  sfpool_free   (void *restrict opaque, void *ptr);
+extern void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size);
 ```
 
 Since the main use-case is being a [custom memory manager in Lua](http://www.lua.org/manual/5.3/manual.html#lua_Alloc), the primary usage example is found in [Zenroom's code src/zen_memory.c](https://github.com/dyne/Zenroom/blob/master/src/zen_memory.c).

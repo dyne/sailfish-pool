@@ -145,7 +145,8 @@ void sfpool_teardown(sfpool_t *restrict pool) {
 }
 
 // Allocate memory
-void *sfpool_malloc(sfpool_t *restrict pool, const size_t size) {
+void *sfpool_malloc(void *restrict opaque, const size_t size) {
+  sfpool_t *pool = (sfpool_t*)opaque;
   void *ptr;
   if (size <= pool->block_size
       && pool->free_list != NULL) {
@@ -168,8 +169,9 @@ void *sfpool_malloc(sfpool_t *restrict pool, const size_t size) {
 }
 
 // Free memory
-bool sfpool_free(sfpool_t *restrict pool, void *ptr) {
-  if (ptr == NULL) return false; // Freeing NULL is a no-op
+void sfpool_free(void *restrict opaque, void *ptr) {
+  sfpool_t *pool = (sfpool_t*)opaque;
+  if (ptr == NULL) return; // Freeing NULL is a no-op
   if (_is_in_pool(pool,ptr)) {
     // Add the block back to the free list
     *(uint8_t **)ptr = pool->free_list;
@@ -179,19 +181,17 @@ bool sfpool_free(sfpool_t *restrict pool, void *ptr) {
     // Zero out the block for security
     _secure_zero(ptr, pool->block_size);
 #endif
-    return true;
+    return;
   } else {
 #ifdef FALLBACK
     free(ptr);
-    return true;
-#else
-    return false;
 #endif
   }
 }
 
 // Reallocate memory
-void *sfpool_realloc(sfpool_t *restrict pool, void *ptr, const size_t size) {
+void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size) {
+  sfpool_t *pool = (sfpool_t*)opaque;
   if (ptr == NULL) {
     return sfpool_malloc(pool, size);
   }
