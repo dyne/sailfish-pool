@@ -52,8 +52,7 @@ int main(int argc, char* argv[]) {
     const char* script_path = argv[1];
 #if defined(MEM_SFPOOL)
     SFP = malloc(sizeof(sfpool_t));
-    sfpool_init(SFP, 8192*2,128);
-    sfpool_status(SFP);
+    sfpool_init(SFP, 8192,256);
 #endif
     lua_State* L = lua_newstate(custom_lua_mem, NULL);
     if (!L) {
@@ -80,6 +79,7 @@ int main(int argc, char* argv[]) {
     // Clean up and exit
     lua_close(L);
 #if defined(MEM_SFPOOL)
+    sfpool_status(SFP);
     sfpool_teardown(SFP);
     free(SFP);
 #endif

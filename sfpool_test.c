@@ -34,14 +34,11 @@
 #define MAX_ALLOCATION_SIZE 256
 #endif
 
-#define BLOCKSIZE 128
-#define BLOCKNUM (2 * 8192) // two MiBs
-
 int main(int argc, char **argv) {
   srand(time(NULL));
   fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
   void *pool = malloc(sizeof(sfpool_t));
-  sfpool_init(pool, 8192, 128);
+  sfpool_init(pool, 8192, 256);
 
   void *pointers[NUM_ALLOCATIONS];
 
@@ -58,14 +55,14 @@ int main(int argc, char **argv) {
     pointers[i] = sfpool_malloc(pool, size);
     assert(pointers[i] != NULL); // Ensure allocation was successful
   }
-  sfpool_status(pool);
+  // sfpool_status(pool);
 
   fprintf(stderr,"Step 2: Free every other allocation\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i += 2) {
     sfpool_free(pool, pointers[i]);
     pointers[i] = NULL;
   }
-  sfpool_status(pool);
+  // sfpool_status(pool);
 
   fprintf(stderr,"Step 3: Reallocate remaining memory\n");
   for (int i = 1; i < NUM_ALLOCATIONS; i += 2) {
@@ -73,7 +70,7 @@ int main(int argc, char **argv) {
     pointers[i] = sfpool_realloc(pool, pointers[i], new_size);
     assert(pointers[i] != NULL); // Ensure reallocation was successful
   }
-  sfpool_status(pool);
+  // sfpool_status(pool);
 
   fprintf(stderr,"Step 4: Free all memory\n");
   for (int i = 0; i < NUM_ALLOCATIONS; i++) {

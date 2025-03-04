@@ -38,7 +38,8 @@
 
 // Configuration
 #define SECURE_ZERO // Enable secure zeroing
-#define FALLBACK // Enable fallback to system alloc
+#define FALLBACK   // Enable fallback to system alloc
+#define PROFILING // Profile most used sizes allocated
 
 // Memory pool structure
 typedef struct sfpool_t {
@@ -49,6 +50,17 @@ typedef struct sfpool_t {
   uint32_t total_bytes;
   uint32_t block_size;
 } sfpool_t;
+
+#ifdef PROFILING
+uint32_t *hits;
+uint32_t hits_total;
+size_t hits_bytes;
+uint32_t miss_total;
+size_t miss_bytes;
+#define profile(pool,s) \
+if(s<pool->block_size) { hits[s]++; hits_total++; hits_bytes+=s; } \
+else { miss_total++; miss_bytes+=s; }
+#endif
 
 static inline void _secure_zero(void *ptr, uint32_t size) {
   volatile uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
@@ -104,6 +116,11 @@ size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
   pool->free_count = pool->total_blocks;
   *(uint8_t **)
     (pool->data + (pool->total_blocks - 1) * blocksize) = NULL;
+#ifdef PROFILING
+  hits = calloc(blocksize+4,sizeof(uint32_t));
+  miss_total = miss_bytes = 0;
+  hits_total = hits_bytes = 0;
+#endif
   return totalsize;
 }
 
@@ -117,6 +134,11 @@ void sfpool_teardown(sfpool_t *restrict pool) {
 #else // Posix
   munmap(pool->data, pool->total_bytes);
 #endif
+#ifdef PROFILING
+  free(hits);
+  miss_total = miss_bytes = 0;
+  hits_total = hits_bytes = 0;
+#endif
 }
 
 // Allocate memory
@@ -128,11 +150,17 @@ void *sfpool_malloc(sfpool_t *restrict pool, const size_t size) {
     uint8_t *block = pool->free_list;
     pool->free_list = *(uint8_t **)block;
     pool->free_count-- ;
+#ifdef PROFILING
+    profile(pool,size);
+#endif
     return block;
   }
   // Fallback to system malloc for large allocations
   ptr = malloc(size);
   if(ptr == NULL) perror("system malloc error");
+#ifdef PROFILING
+  profile(pool,size);
+#endif
   return ptr;
 }
 
@@ -170,6 +198,9 @@ void *sfpool_realloc(sfpool_t *restrict pool, void *ptr, const size_t size) {
   }
   if (_is_in_pool((sfpool_t*)pool,ptr)) {
     if (size <= pool->block_size) {
+#ifdef PROFILING
+      profile(pool,size);
+#endif
       return ptr; // No need to reallocate
     } else {
       void *new_ptr = malloc(size);
@@ -185,12 +216,18 @@ void *sfpool_realloc(sfpool_t *restrict pool, void *ptr, const size_t size) {
       // Zero out the block for security
       _secure_zero(ptr, pool->block_size);
 #endif
+#ifdef PROFILING
+      profile(pool,size);
+#endif
       return new_ptr;
     }
   } else {
 #ifdef FALLBACK
     // Handle large allocations
     return realloc(ptr, size);
+#ifdef PROFILING
+    profile(pool,size);
+#endif
 #else
     return NULL;
 #endif
@@ -199,9 +236,14 @@ void *sfpool_realloc(sfpool_t *restrict pool, void *ptr, const size_t size) {
 
 // Debug function to print memory manager state
 void sfpool_status(sfpool_t *restrict p) {
-  fprintf(stderr,"🌊 Sailfish pool \t %u blocks %u B each\n",
+  fprintf(stderr,"\n🌊 sfpool: %u blocks %u B each\n",
           p->total_blocks, p->block_size);
-  fprintf(stderr,"🌊 Sailfish pool \t %u \t allocations managed\n",
-          p->total_blocks - p->free_count);
+#ifdef PROFILING
+  fprintf(stderr,"🌊 Misses: %u - %lu K\n",miss_total,miss_bytes/1024);
+  fprintf(stderr,"🌊 Hits:   %u - %lu K\n",hits_total,hits_bytes/1024);
+  // for (uint32_t i = 1; i <= p->block_size; i++) {
+  //   fprintf(stdout,"%u %u\n",i,hits[i]);
+  // }
+#endif
 }
 #endif
