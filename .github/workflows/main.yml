@@ -45,7 +45,7 @@ jobs:
         #        echo "😤 Some files failed the C linting checks!"
 
   linux-test:
-    name: 🐧 Linux check tests (gcc and clang)
+    name: 🐧 Linux test
     needs: [reuse, c-lint]
     strategy:
       matrix:
@@ -59,13 +59,13 @@ jobs:
     - name: Test GNU/Linux ${{ matrix.command }}
       run: |
         make ${{ matrix.command }}
-        make check
+        make check > /dev/null
     - name: Test Lua ${{ matrix.command }}
       run: |
-        make check-lua ${{ matrix.command }}
+        make check-lua ${{ matrix.command }} > /dev/null
 
   win-native-test:
-    name: 🪟 Windows native test
+    name: 🪟 Windows test
     needs: [reuse, c-lint]
     runs-on: "windows-latest"
     steps:
@@ -76,7 +76,7 @@ jobs:
           .\sfpool_test 1024 128
 
   osx-native-test:
-    name: 🍎 OSX native test
+    name: 🍎 OSX test
     needs: [reuse, c-lint]
     runs-on: "macos-latest"
     steps:
@@ -87,7 +87,7 @@ jobs:
           time ./sfpool_test 1024 128
 
   arm32-test:
-    name: 🦾 ARM32 build test
+    name: 🦾 ARM32 test
     needs: [reuse, c-lint]
     runs-on: ubuntu-latest
     steps:
@@ -101,7 +101,7 @@ jobs:
             ./sfpool_test 1024 128
 
   js-build-check:
-    name: 🐯 NodeJS WASM test
+    name: 🐯 WASM test
     needs: [reuse, c-lint]
     runs-on: ubuntu-latest
     strategy:

@@ -37,9 +37,6 @@ check: sfpool_test
 	@time ./sfpool_test 1024 256; sync
 	@time ./sfpool_test 2048 256; sync
 	@time ./sfpool_test 4096 256; sync
-	@time ./sfpool_test 1024 512; sync
-	@time ./sfpool_test 2048 512; sync
-	@time ./sfpool_test 4096 512; sync
 
 LUA_MEM_TEST ?= MEM_SFPOOL
 

@@ -27,7 +27,7 @@
 #include <time.h>
 
 #ifndef NUM_ALLOCATIONS
-#define NUM_ALLOCATIONS 20000
+#define NUM_ALLOCATIONS 80000
 #endif
 
 #ifndef MAX_ALLOCATION_SIZE
