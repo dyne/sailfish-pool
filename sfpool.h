@@ -82,7 +82,7 @@ static inline bool _is_in_pool(sfpool_t *pool, const void *ptr) {
 size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
   if((blocksize & (blocksize - 1)) != 0) {
     fprintf(stderr,"SFPool blocksize must be a power of two\n");
-    return -1;
+    return 0;
   }
   size_t totalsize = nmemb * blocksize;
 #if defined(__EMSCRIPTEN__)
@@ -97,7 +97,7 @@ size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
 #endif
   if (pool->data == NULL) {
     fprintf(stderr, "Failed to allocate pool memory\n");
-    exit(EXIT_FAILURE);
+    return 0;
   }
   // Zero out the entire pool
   _secure_zero(pool->data, totalsize);
