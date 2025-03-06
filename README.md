@@ -20,11 +20,6 @@ instance using the "LD_PRELOAD trick") because it also requires:
 1. initialization: `sfpool_init(void* pool, size_t nmemb, size_t size)`
 2. teardown: `sfpool_teardown(void* pool)`
 
-Before passing it to `sfpool_init()` one should pre-allocate the pool
-structure according to the target architecture:
-- 64bit: 32 byte long buffer
-- 32bit: 24 byte long buffer
-
 A single pool cannot be used by multiple threads: multi-threaded
 applications should create and initialize a different pool for each
 running thread.
