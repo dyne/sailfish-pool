@@ -260,6 +260,13 @@ void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size) {
   }
 }
 
+int sfpool_contains(void *restrict opaque, const void *ptr) {
+  sfpool_t *pool = (sfpool_t*)opaque;
+  int res = 0;
+  if( _is_in_pool(pool,ptr) ) res = 1;
+  return res;
+}
+
 // Debug function to print memory manager state
 void sfpool_status(sfpool_t *restrict p) {
   fprintf(stderr,"\n🌊 sfpool: %u blocks %u B each\n",
