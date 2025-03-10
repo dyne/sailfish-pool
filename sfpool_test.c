@@ -38,7 +38,12 @@ int main(int argc, char **argv) {
   srand(time(NULL));
   fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
   void *pool = malloc(sizeof(sfpool_t));
-  sfpool_init(pool, atoi(argv[1]), atoi(argv[2]));
+  int blocknum = atoi(argv[1]);
+  if(!blocknum) blocknum = 1024;
+  int blocksize = atoi(argv[2]);
+  if(!blocksize) blocksize = 256;
+
+  sfpool_init(pool, blocknum, blocksize);
 
   void *pointers[NUM_ALLOCATIONS];
 
