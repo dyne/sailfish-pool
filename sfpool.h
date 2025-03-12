@@ -79,17 +79,47 @@ static inline bool _is_in_pool(sfpool_t *pool, const void *ptr) {
          && p < (ptr_t)(pool->data + pool->total_bytes));
 }
 
+/**
+ * @defgroup sfutil Internal Utilities
+ * @{
+ */
 
+/**
+ * @brief Zeroes out a block of memory.
+ *
+ * This function sets a block of memory to zero using 32-bit writes for efficiency.
+ *
+ * @param ptr Pointer to the memory block to zero out.
+ * @param size Size of the memory block in bytes.
+ */
 void  sfutil_zero(void *ptr, uint32_t size) {
   register uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
   register uint32_t s = (size>>2); // divide counter by 4
   while (s--) *p++ = 0x0; // hit the road jack
 }
+
+/**
+ * @brief Aligns a pointer to the nearest boundary.
+ *
+ * This function aligns the given pointer to the nearest boundary specified by `ptr_align`.
+ *
+ * @param ptr Pointer to align.
+ * @return Aligned pointer.
+ */
 void *sfutil_memalign(const void* ptr) {
     register ptr_t mask = ptr_align - 1;
     ptr_t aligned = ((ptr_t)ptr + mask) & ~mask;
     return (void*)aligned;
 }
+
+/**
+ * @brief Allocates memory securely.
+ *
+ * This function allocates memory securely, ensuring it is aligned and locked (if supported by the platform).
+ *
+ * @param size Size of the memory block to allocate.
+ * @return Pointer to the allocated memory block, or NULL on failure.
+ */
 void *sfutil_secalloc(size_t size) {
 	// add bytes to every allocation to support alignment
 	void *res = NULL;
@@ -111,6 +141,15 @@ void *sfutil_secalloc(size_t size) {
 #endif
 	return res;
 }
+
+/**
+ * @brief Frees memory allocated securely.
+ *
+ * This function frees memory that was allocated using `sfutil_secalloc`.
+ *
+ * @param ptr Pointer to the memory block to free.
+ * @param size Size of the memory block in bytes.
+ */
 void sfutil_secfree(void *ptr, size_t size) {
 #if defined(__EMSCRIPTEN__)
 	free(ptr);
@@ -121,7 +160,25 @@ void sfutil_secfree(void *ptr, size_t size) {
 #endif
 }
 
-// Create memory manager
+/** @} */ // End of sfutil group
+
+
+/**
+ * @defgroup sfpool High-Level API
+ * @{
+ */
+
+/**
+ * @brief Initializes a memory pool.
+ *
+ * This function initializes a memory pool with a specified number of blocks and block size.
+ * The block size must be a power of two.
+ *
+ * @param pool Pointer to the memory pool structure to initialize.
+ * @param nmemb Number of blocks in the pool.
+ * @param blocksize Size of each block in bytes.
+ * @return Total size of the memory pool in bytes, or 0 on failure.
+ */
 size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
   if((blocksize & (blocksize - 1)) != 0) return 0;
   // SFPool blocksize must be a power of two
@@ -154,7 +211,14 @@ size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
   return totalsize;
 }
 
-// Destroy memory manager
+
+/**
+ * @brief Tears down a memory pool.
+ *
+ * This function releases all resources associated with the memory pool.
+ *
+ * @param pool Pointer to the memory pool structure to tear down.
+ */
 void sfpool_teardown(sfpool_t *restrict pool) {
   // Free pool memory
   sfutil_secfree(pool->buffer, pool->total_bytes);
@@ -165,7 +229,16 @@ void sfpool_teardown(sfpool_t *restrict pool) {
 #endif
 }
 
-// Allocate memory
+/**
+ * @brief Allocates memory from the pool.
+ *
+ * This function allocates memory from the pool if the requested size is within the block size.
+ * Otherwise, it falls back to system malloc.
+ *
+ * @param opaque Pointer to the memory pool structure.
+ * @param size Size of the memory block to allocate.
+ * @return Pointer to the allocated memory block, or NULL on failure.
+ */
 void *sfpool_malloc(void *restrict opaque, const size_t size) {
   sfpool_t *pool = (sfpool_t*)opaque;
   void *ptr;
@@ -193,7 +266,16 @@ void *sfpool_malloc(void *restrict opaque, const size_t size) {
   return ptr;
 }
 
-// Free memory
+
+/**
+ * @brief Frees memory allocated from the pool.
+ *
+ * This function frees memory that was allocated from the pool. If the memory was not allocated
+ * from the pool, it falls back to system free (if enabled).
+ *
+ * @param opaque Pointer to the memory pool structure.
+ * @param ptr Pointer to the memory block to free.
+ */
 void sfpool_free(void *restrict opaque, void *ptr) {
   sfpool_t *pool = (sfpool_t*)opaque;
   if (ptr == NULL) return; // Freeing NULL is a no-op
@@ -214,7 +296,18 @@ void sfpool_free(void *restrict opaque, void *ptr) {
   }
 }
 
-// Reallocate memory
+
+/**
+ * @brief Reallocates memory from the pool.
+ *
+ * This function reallocates memory from the pool. If the new size is larger than the block size,
+ * it allocates new memory using system malloc and copies the old data.
+ *
+ * @param opaque Pointer to the memory pool structure.
+ * @param ptr Pointer to the memory block to reallocate.
+ * @param size New size of the memory block.
+ * @return Pointer to the reallocated memory block, or NULL on failure.
+ */
 void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size) {
   sfpool_t *pool = (sfpool_t*)opaque;
   if (ptr == NULL) {
@@ -268,6 +361,15 @@ void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size) {
   }
 }
 
+/**
+ * @brief Checks if a pointer is within the memory pool.
+ *
+ * This function checks if the given pointer is within the memory pool.
+ *
+ * @param opaque Pointer to the memory pool structure.
+ * @param ptr Pointer to check.
+ * @return 1 if the pointer is within the pool, 0 otherwise.
+ */
 int sfpool_contains(void *restrict opaque, const void *ptr) {
   sfpool_t *pool = (sfpool_t*)opaque;
   int res = 0;
@@ -275,7 +377,15 @@ int sfpool_contains(void *restrict opaque, const void *ptr) {
   return res;
 }
 
-// Debug function to print memory manager state
+
+/**
+ * @brief Prints the status of the memory pool.
+ *
+ * This function prints the current status of the memory pool, including the number of blocks,
+ * block size, and profiling information (if enabled).
+ *
+ * @param p Pointer to the memory pool structure.
+ */
 void sfpool_status(sfpool_t *restrict p) {
   fprintf(stderr,"\n🌊 sfpool: %u blocks %u B each\n",
           p->total_blocks, p->block_size);
@@ -286,4 +396,7 @@ void sfpool_status(sfpool_t *restrict p) {
   fprintf(stderr,"🌊 Hits:   %lu K (%u calls)\n",p->hits_bytes/1024,p->hits_total);
 #endif
 }
+
+/** @} */ // End of sfpool group
+
 #endif

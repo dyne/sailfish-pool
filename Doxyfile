@@ -1,0 +1,33 @@
+
+DOXYFILE_ENCODING      = UTF-8
+PROJECT_NAME           = "Sailfish pool (sfpool)"
+PROJECT_NUMBER         =
+PROJECT_BRIEF          = "Secure and Fast memory Pool (sfpool.h) in 300 lines of portable header-only C code"
+PROJECT_LOGO           = sailfish-pool-200px.jpg
+OUTPUT_DIRECTORY       = docs/
+HTML_OUTPUT			   = ./
+OUTPUT_LANGUAGE        = English
+
+INPUT = ./
+FILE_PATTERNS          = sfpool.h README.md
+HTML_EXTRA_STYLESHEET = doxyfile.css
+
+# Main page
+MARKDOWN_SUPPORT = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+GENERATE_TREEVIEW = NO
+
+# Disable class documentation
+EXTRACT_ALL = NO
+HIDE_UNDOC_CLASSES = YES
+EXTRACT_PRIVATE = NO
+EXTRACT_STATIC = NO
+
+# Focus on topics (modules)
+GROUPING = YES
+GENERATE_MODULEINDEX = YES
+
+# Disable unnecessary output
+ALPHABETICAL_INDEX = NO
+GENERATE_CLASS_DIAGRAM = NO
+HAVE_DOT = NO
