@@ -3,51 +3,44 @@ SPDX-FileCopyrightText: 2025 Dyne.org foundation
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-# 🌊 Sailfish pool - small and fast memory pool
-
 ![](https://raw.githubusercontent.com/dyne/sailfish-pool/refs/heads/main/sailfish-pool.jpg)
 
 This is a lightweight pool manager for small memory allocations in C,
-optimized for speed, safety and privacy. It mainly consists of three
-functions to be used in place of standard C memory allocations.
+optimized for data privacy and speed.
 
-1. allocate memory `void *sfpool_malloc(void *pool, size_t size)`
-2. free memory `bool sfpool_free(void *pool, void *ptr)`
-3. resize allocated memory `void *sfpool_realloc(void *pool, void *ptr)`
+It does not work as a drop-in replacement of memory functions using
+the "LD_PRELOAD trick") because it also requires initialization and
+teardown.
 
-It does not work as a drop-in replacement of memory functions (for
-instance using the "LD_PRELOAD trick") because it also requires:
-1. initialization: `sfpool_init(void* pool, size_t nmemb, size_t size)`
-2. teardown: `sfpool_teardown(void* pool)`
-
-A single pool cannot be used by multiple threads: multi-threaded
-applications should create and initialize a different pool for each
-running thread.
+Also a single sfpool cannot share concurrent memory access:
+multi-threaded applications should create and initialize a different
+sfpool for each running thread.
 
 ## Features
 
 - **Portable**: Tested to run on 32 and 64 bit targets: Apple/OSX and MS/Windows, ARM and x86 as well WASM
-- **Pool Allocator**: Efficiently manages small, fixed-size memory blocks using a preallocated memory pool.
-- **Secure Zeroing**: Ensures all memory is zeroed out before free to protect sensitive information.
-- **Reallocation Support**: Supports `realloc()` for both pool and large memory blocks, handling transitions.
-- **Hashtable optimization**: Fast O(1) lookup on allocated pointers grants constant time execution.
-- **Fallback Mechanism**: Falls back to `malloc()` when the pool is exhausted and continues functioning.
+- **Fast**: Efficiently manages small, fixed-size memory blocks using a preallocated memory pool.
+- **Private**: Ensures memory access is locked whenever possible and contents deleted on release.
+- **Transparent**: Supports `realloc()` for transparent transition to system alloc on big sizes.
+- **Steady**: Hashtable lookup on allocated memory grants O(1) constant time operations.
+- **Fallback**: Resorts to system `malloc()` when pool is exhausted to continue functioning.
 
 ## Intended use case
 
 The primary use case for 🌊 sailfish-pool is within
-[Zenroom](https://zenroo.org), a small virtual machine (VM) designed
-for cryptographic operations where Lua is embedded. Zenroom's main
-target is WebAssembly (WASM), which [we extensively use at
-work](https://forkbomb.solutions) to simplify end-to-end
-encryption. This explains the 32-bit constraint of the allocator.
+[Zenroom](https://zenroo.org), our small virtual machine (VM) designed
+for cryptographic operations where Lua is embedded.
+
+Zenroom's main target is WebAssembly (WASM), which [we extensively use
+at work](https://forkbomb.solutions) to simplify end-to-end
+encryption. This explains the 32-bit support of this allocator.
 
 In Zenroom, a significant amount of small memory allocations occur,
 typically involving octets for hashes, elliptic curve points,
 cryptographic keys, zero-knowledge proofs, and other cryptographic
-operations. These allocations frequently have sizes below 128
+operations. These allocations frequently have sizes below 256
 bytes. As cryptographic algorithms evolve, particularly with the
-advent of post-quantum cryptography, the pool size will be fine-tuned
+advent of post-quantum cryptography, the pool size can be fine-tuned
 to accommodate these growing requirements.
 
 ## Usage
@@ -55,17 +48,20 @@ to accommodate these growing requirements.
 To use the custom memory manager in your project, include `sfpool.h`
 and use the provided functions.
 
-You can also redefine malloc/free/realloc taking advantage of the
-opaque context pointers, this way you won't need to include our header
-everywhere and just declare some externs:
+### [High Level API](https://dyne.org/sailfish-pool/group__sfpool.html)
 
-```c
-extern void *sfpool_malloc (void *restrict opaque, const size_t size);
-extern bool  sfpool_free   (void *restrict opaque, void *ptr);
-extern void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size);
-```
+The main entry point is [🌊 documented
+here](https://dyne.org/sailfish-pool/group__sfpool.html) and
+constituted by init/teardown functions initalizing an sfpool context
+and malloc/free/realloc functions for common memory operations. Also a
+function to verify if a pointer is contained in the pool and one to
+report status.
 
-Since the main use-case is being a [custom memory manager in Lua](http://www.lua.org/manual/5.3/manual.html#lua_Alloc), the primary usage example is found in [Zenroom's code src/zen_memory.c](https://github.com/dyne/Zenroom/blob/master/src/zen_memory.c).
+### [Utilities API](https://dyne.org/sailfish-pool/group__sfutil.html)
+
+Some internal functions are exposed as they may be useful also to host
+applications: fast and portable memory zeroing, memory alignment and
+the internal portable implementations for secure allocation and free.
 
 ## Testing
 

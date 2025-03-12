@@ -1,8 +1,10 @@
+# SPDX-FileCopyrightText: 2025 Dyne.org foundation
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "Sailfish pool (sfpool)"
+PROJECT_NAME           = "🌊 Sailfish pool (sfpool)"
 PROJECT_NUMBER         =
-PROJECT_BRIEF          = "Secure and Fast memory Pool (sfpool.h) in 300 lines of portable header-only C code"
+PROJECT_BRIEF          = "Secure and Fast memory pool, in 300 lines of portable, header-only C code."
 PROJECT_LOGO           = sailfish-pool-200px.jpg
 OUTPUT_DIRECTORY       = docs/
 HTML_OUTPUT			   = ./
@@ -10,7 +12,7 @@ OUTPUT_LANGUAGE        = English
 
 INPUT = ./
 FILE_PATTERNS          = sfpool.h README.md
-HTML_EXTRA_STYLESHEET = doxyfile.css
+HTML_EXTRA_STYLESHEET  = doxyfile.css
 
 # Main page
 MARKDOWN_SUPPORT = YES
