@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['fast_20memory_20pool_0',['🌊 Sailfish pool - small and fast memory pool',['../index.html#autotoc_md0',1,'']]],
-  ['features_1',['Features',['../index.html#autotoc_md1',1,'']]]
+  ['dyne_20org_20sailfish_20pool_20group_5f_5fsfpool_20html_20high_20level_20api_20a_0',['&lt;a href=&quot;https://dyne.org/sailfish-pool/group__sfpool.html&quot; &gt;High Level API&lt;/a&gt;',['../index.html#autotoc_md3',1,'']]],
+  ['dyne_20org_20sailfish_20pool_20group_5f_5fsfutil_20html_20utilities_20api_20a_1',['&lt;a href=&quot;https://dyne.org/sailfish-pool/group__sfutil.html&quot; &gt;Utilities API&lt;/a&gt;',['../index.html#autotoc_md4',1,'']]]
 ];

@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['memory_20pool_0',['🌊 Sailfish pool - small and fast memory pool',['../index.html#autotoc_md0',1,'']]]
+  ['intended_20use_20case_0',['Intended use case',['../index.html#autotoc_md1',1,'']]],
+  ['internal_20utilities_1',['Internal Utilities',['../group__sfutil.html',1,'']]]
 ];

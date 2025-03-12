@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2025 Dyne.org foundation */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
 #navrow1 {
     display: none;
 }
@@ -7,11 +10,14 @@
 div.header {
     display: none;
 }
-
-
 #sm-dox {
     display: none;
 }
 .sm {
     display: none;
+}
+/* Make images responsive */
+img {
+    max-width: 100%;
+    height: auto;
 }

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Sailfish pool (sfpool): Sailfish pool (sfpool)</title>
+<title>🌊 Sailfish pool (sfpool): 🌊 Sailfish pool (sfpool)</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -21,10 +21,11 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr id="projectrow">
+  <td id="projectlogo"><img alt="Logo" src="sailfish-pool-200px.jpg"/></td>
   <td id="projectalign">
-   <div id="projectname">Sailfish pool (sfpool)
+   <div id="projectname">🌊 Sailfish pool (sfpool)
    </div>
-   <div id="projectbrief">Secure and Fast memory Pool (sfpool.h) in 300 lines of portable header-only C code</div>
+   <div id="projectbrief">Secure and Fast memory pool, in 300 lines of portable, header-only C code.</div>
   </td>
  </tr>
  </tbody>
@@ -71,56 +72,45 @@ $(function() {
 </div>
 
 <div><div class="header">
-  <div class="headertitle"><div class="title">Sailfish pool (sfpool) </div></div>
+  <div class="headertitle"><div class="title">🌊 Sailfish pool (sfpool) </div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><p><a class="anchor" id="md_README"></a></p>
-<h1><a class="anchor" id="autotoc_md0"></a>
-🌊 Sailfish pool - small and fast memory pool</h1>
 <p><img src="https://raw.githubusercontent.com/dyne/sailfish-pool/refs/heads/main/sailfish-pool.jpg" alt="" class="inline"/></p>
-<p>This is a lightweight pool manager for small memory allocations in C, optimized for speed, safety and privacy. It mainly consists of three functions to be used in place of standard C memory allocations.</p>
-<ol type="1">
-<li>allocate memory <code>void *sfpool_malloc(void *pool, size_t size)</code></li>
-<li>free memory <code>bool sfpool_free(void *pool, void *ptr)</code></li>
-<li>resize allocated memory <code>void *sfpool_realloc(void *pool, void *ptr)</code></li>
-</ol>
-<p>It does not work as a drop-in replacement of memory functions (for instance using the "LD_PRELOAD trick") because it also requires:</p><ol type="1">
-<li>initialization: <code>sfpool_init(void* pool, size_t nmemb, size_t size)</code></li>
-<li>teardown: <code>sfpool_teardown(void* pool)</code></li>
-</ol>
-<p>A single pool cannot be used by multiple threads: multi-threaded applications should create and initialize a different pool for each running thread.</p>
-<h2><a class="anchor" id="autotoc_md1"></a>
+<p>This is a lightweight pool manager for small memory allocations in C, optimized for data privacy and speed.</p>
+<p>It does not work as a drop-in replacement of memory functions using the "LD_PRELOAD trick") because it also requires initialization and teardown.</p>
+<p>Also a single sfpool cannot share concurrent memory access: multi-threaded applications should create and initialize a different sfpool for each running thread.</p>
+<h2><a class="anchor" id="autotoc_md0"></a>
 Features</h2>
 <ul>
 <li><b>Portable</b>: Tested to run on 32 and 64 bit targets: Apple/OSX and MS/Windows, ARM and x86 as well WASM</li>
-<li><b>Pool Allocator</b>: Efficiently manages small, fixed-size memory blocks using a preallocated memory pool.</li>
-<li><b>Secure Zeroing</b>: Ensures all memory is zeroed out before free to protect sensitive information.</li>
-<li><b>Reallocation Support</b>: Supports <code>realloc()</code> for both pool and large memory blocks, handling transitions.</li>
-<li><b>Hashtable optimization</b>: Fast O(1) lookup on allocated pointers grants constant time execution.</li>
-<li><b>Fallback Mechanism</b>: Falls back to <code>malloc()</code> when the pool is exhausted and continues functioning.</li>
+<li><b>Fast</b>: Efficiently manages small, fixed-size memory blocks using a preallocated memory pool.</li>
+<li><b>Private</b>: Ensures memory access is locked whenever possible and contents deleted on release.</li>
+<li><b>Transparent</b>: Supports <code>realloc()</code> for transparent transition to system alloc on big sizes.</li>
+<li><b>Steady</b>: Hashtable lookup on allocated memory grants O(1) constant time operations.</li>
+<li><b>Fallback</b>: Resorts to system <code>malloc()</code> when pool is exhausted to continue functioning.</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md2"></a>
+<h2><a class="anchor" id="autotoc_md1"></a>
 Intended use case</h2>
-<p>The primary use case for 🌊 sailfish-pool is within <a href="https://zenroo.org">Zenroom</a>, a small virtual machine (VM) designed for cryptographic operations where Lua is embedded. Zenroom's main target is WebAssembly (WASM), which <a href="https://forkbomb.solutions">we extensively use at work</a> to simplify end-to-end encryption. This explains the 32-bit constraint of the allocator.</p>
-<p>In Zenroom, a significant amount of small memory allocations occur, typically involving octets for hashes, elliptic curve points, cryptographic keys, zero-knowledge proofs, and other cryptographic operations. These allocations frequently have sizes below 128 bytes. As cryptographic algorithms evolve, particularly with the advent of post-quantum cryptography, the pool size will be fine-tuned to accommodate these growing requirements.</p>
-<h2><a class="anchor" id="autotoc_md3"></a>
+<p>The primary use case for 🌊 sailfish-pool is within <a href="https://zenroo.org">Zenroom</a>, our small virtual machine (VM) designed for cryptographic operations where Lua is embedded.</p>
+<p>Zenroom's main target is WebAssembly (WASM), which <a href="https://forkbomb.solutions">we extensively use at work</a> to simplify end-to-end encryption. This explains the 32-bit support of this allocator.</p>
+<p>In Zenroom, a significant amount of small memory allocations occur, typically involving octets for hashes, elliptic curve points, cryptographic keys, zero-knowledge proofs, and other cryptographic operations. These allocations frequently have sizes below 256 bytes. As cryptographic algorithms evolve, particularly with the advent of post-quantum cryptography, the pool size can be fine-tuned to accommodate these growing requirements.</p>
+<h2><a class="anchor" id="autotoc_md2"></a>
 Usage</h2>
 <p>To use the custom memory manager in your project, include <code><a class="el" href="sfpool_8h_source.html">sfpool.h</a></code> and use the provided functions.</p>
-<p>You can also redefine malloc/free/realloc taking advantage of the opaque context pointers, this way you won't need to include our header everywhere and just declare some externs:</p>
-<div class="fragment"><div class="line"><span class="keyword">extern</span> <span class="keywordtype">void</span> *<a class="code hl_function" href="group__sfpool.html#ga98123506831517c08e1af7483bb6c58c">sfpool_malloc</a> (<span class="keywordtype">void</span> *restrict opaque, <span class="keyword">const</span> <span class="keywordtype">size_t</span> size);</div>
-<div class="line"><span class="keyword">extern</span> <span class="keywordtype">bool</span>  <a class="code hl_function" href="group__sfpool.html#ga6f0da3366af27a351a26dc702d7dd3cf">sfpool_free</a>   (<span class="keywordtype">void</span> *restrict opaque, <span class="keywordtype">void</span> *ptr);</div>
-<div class="line"><span class="keyword">extern</span> <span class="keywordtype">void</span> *<a class="code hl_function" href="group__sfpool.html#ga5df557a924fa77261a35138e515a5768">sfpool_realloc</a>(<span class="keywordtype">void</span> *restrict opaque, <span class="keywordtype">void</span> *ptr, <span class="keyword">const</span> <span class="keywordtype">size_t</span> size);</div>
-<div class="ttc" id="agroup__sfpool_html_ga5df557a924fa77261a35138e515a5768"><div class="ttname"><a href="group__sfpool.html#ga5df557a924fa77261a35138e515a5768">sfpool_realloc</a></div><div class="ttdeci">void * sfpool_realloc(void *restrict opaque, void *ptr, const size_t size)</div><div class="ttdoc">Reallocates memory from the pool.</div><div class="ttdef"><b>Definition</b> sfpool.h:311</div></div>
-<div class="ttc" id="agroup__sfpool_html_ga6f0da3366af27a351a26dc702d7dd3cf"><div class="ttname"><a href="group__sfpool.html#ga6f0da3366af27a351a26dc702d7dd3cf">sfpool_free</a></div><div class="ttdeci">void sfpool_free(void *restrict opaque, void *ptr)</div><div class="ttdoc">Frees memory allocated from the pool.</div><div class="ttdef"><b>Definition</b> sfpool.h:279</div></div>
-<div class="ttc" id="agroup__sfpool_html_ga98123506831517c08e1af7483bb6c58c"><div class="ttname"><a href="group__sfpool.html#ga98123506831517c08e1af7483bb6c58c">sfpool_malloc</a></div><div class="ttdeci">void * sfpool_malloc(void *restrict opaque, const size_t size)</div><div class="ttdoc">Allocates memory from the pool.</div><div class="ttdef"><b>Definition</b> sfpool.h:242</div></div>
-</div><!-- fragment --><p>Since the main use-case is being a <a href="http://www.lua.org/manual/5.3/manual.html#lua_Alloc">custom memory manager in Lua</a>, the primary usage example is found in <a href="https://github.com/dyne/Zenroom/blob/master/src/zen_memory.c">Zenroom's code src/zen_memory.c</a>.</p>
-<h2><a class="anchor" id="autotoc_md4"></a>
+<h3><a class="anchor" id="autotoc_md3"></a>
+&lt;a href="https://dyne.org/sailfish-pool/group__sfpool.html" &gt;High Level API&lt;/a&gt;</h3>
+<p>The main entry point is <a href="https://dyne.org/sailfish-pool/group__sfpool.html">🌊 documented here</a> and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.</p>
+<h3><a class="anchor" id="autotoc_md4"></a>
+&lt;a href="https://dyne.org/sailfish-pool/group__sfutil.html" &gt;Utilities API&lt;/a&gt;</h3>
+<p>Some internal functions are exposed as they may be useful also to host applications: fast and portable memory zeroing, memory alignment and the internal portable implementations for secure allocation and free.</p>
+<h2><a class="anchor" id="autotoc_md5"></a>
 Testing</h2>
 <p>There is a makefile target in this repository running tests with the address sanitizer: just type <code>make</code>.</p>
 <p>To run these tests inside your source you can always do: </p><pre class="fragment">gcc -D SFPOOL_TEST -o sfpool_test sfpool.c
 time ./sfpool_test
 </pre><p> The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.</p>
-<h2><a class="anchor" id="autotoc_md5"></a>
+<h2><a class="anchor" id="autotoc_md6"></a>
 License</h2>
 <p>Copyright (C) 2025 Dyne.org foundation</p>
 <p>Designed and written by Denis "[Jaromil](https://jaromil.dyne.org)" Roio</p>

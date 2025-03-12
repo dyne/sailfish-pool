@@ -1,58 +1,39 @@
-\chapter{Sailfish pool (sfpool)}
-\hypertarget{index}{}\label{index}\index{Sailfish pool (sfpool)@{Sailfish pool (sfpool)}}
+\chapter{🌊 Sailfish pool (sfpool)}
+\hypertarget{index}{}\label{index}\index{🌊 Sailfish pool (sfpool)@{🌊 Sailfish pool (sfpool)}}
 \label{index_md_README}%
 \Hypertarget{index_md_README}%
-\hypertarget{index_autotoc_md0}{}\doxysection{\texorpdfstring{🌊 Sailfish pool -\/ small and fast memory pool}{🌊 Sailfish pool - small and fast memory pool}}\label{index_autotoc_md0}
 
 
-This is a lightweight pool manager for small memory allocations in C, optimized for speed, safety and privacy. It mainly consists of three functions to be used in place of standard C memory allocations.
 
 
-\begin{DoxyEnumerate}
-\item allocate memory {\ttfamily void \texorpdfstring{$\ast$}{*}sfpool\+\_\+malloc(void \texorpdfstring{$\ast$}{*}pool, size\+\_\+t size)}
-\item free memory {\ttfamily bool sfpool\+\_\+free(void \texorpdfstring{$\ast$}{*}pool, void \texorpdfstring{$\ast$}{*}ptr)}
-\item resize allocated memory {\ttfamily void \texorpdfstring{$\ast$}{*}sfpool\+\_\+realloc(void \texorpdfstring{$\ast$}{*}pool, void \texorpdfstring{$\ast$}{*}ptr)}
-\end{DoxyEnumerate}
+This is a lightweight pool manager for small memory allocations in C, optimized for data privacy and speed.
 
-It does not work as a drop-\/in replacement of memory functions (for instance using the "{}\+LD\+\_\+\+PRELOAD trick"{}) because it also requires\+:
-\begin{DoxyEnumerate}
-\item initialization\+: {\ttfamily sfpool\+\_\+init(void\texorpdfstring{$\ast$}{*} pool, size\+\_\+t nmemb, size\+\_\+t size)}
-\item teardown\+: {\ttfamily sfpool\+\_\+teardown(void\texorpdfstring{$\ast$}{*} pool)}
-\end{DoxyEnumerate}
+It does not work as a drop-\/in replacement of memory functions using the "{}\+LD\+\_\+\+PRELOAD trick"{}) because it also requires initialization and teardown.
 
-A single pool cannot be used by multiple threads\+: multi-\/threaded applications should create and initialize a different pool for each running thread.\hypertarget{index_autotoc_md1}{}\doxysubsection{\texorpdfstring{Features}{Features}}\label{index_autotoc_md1}
+Also a single sfpool cannot share concurrent memory access\+: multi-\/threaded applications should create and initialize a different sfpool for each running thread.\hypertarget{index_autotoc_md0}{}\doxysubsection{\texorpdfstring{Features}{Features}}\label{index_autotoc_md0}
 
 \begin{DoxyItemize}
 \item {\bfseries{Portable}}\+: Tested to run on 32 and 64 bit targets\+: Apple/\+OSX and MS/\+Windows, ARM and x86 as well WASM
-\item {\bfseries{Pool Allocator}}\+: Efficiently manages small, fixed-\/size memory blocks using a preallocated memory pool.
-\item {\bfseries{Secure Zeroing}}\+: Ensures all memory is zeroed out before free to protect sensitive information.
-\item {\bfseries{Reallocation Support}}\+: Supports {\ttfamily realloc()} for both pool and large memory blocks, handling transitions.
-\item {\bfseries{Hashtable optimization}}\+: Fast O(1) lookup on allocated pointers grants constant time execution.
-\item {\bfseries{Fallback Mechanism}}\+: Falls back to {\ttfamily malloc()} when the pool is exhausted and continues functioning.
-\end{DoxyItemize}\hypertarget{index_autotoc_md2}{}\doxysubsection{\texorpdfstring{Intended use case}{Intended use case}}\label{index_autotoc_md2}
-The primary use case for 🌊 sailfish-\/pool is within \href{https://zenroo.org}{\texttt{ Zenroom}}, a small virtual machine (VM) designed for cryptographic operations where Lua is embedded. Zenroom\textquotesingle{}s main target is Web\+Assembly (WASM), which \href{https://forkbomb.solutions}{\texttt{ we extensively use at work}} to simplify end-\/to-\/end encryption. This explains the 32-\/bit constraint of the allocator.
+\item {\bfseries{Fast}}\+: Efficiently manages small, fixed-\/size memory blocks using a preallocated memory pool.
+\item {\bfseries{Private}}\+: Ensures memory access is locked whenever possible and contents deleted on release.
+\item {\bfseries{Transparent}}\+: Supports {\ttfamily realloc()} for transparent transition to system alloc on big sizes.
+\item {\bfseries{Steady}}\+: Hashtable lookup on allocated memory grants O(1) constant time operations.
+\item {\bfseries{Fallback}}\+: Resorts to system {\ttfamily malloc()} when pool is exhausted to continue functioning.
+\end{DoxyItemize}\hypertarget{index_autotoc_md1}{}\doxysubsection{\texorpdfstring{Intended use case}{Intended use case}}\label{index_autotoc_md1}
+The primary use case for 🌊 sailfish-\/pool is within \href{https://zenroo.org}{\texttt{ Zenroom}}, our small virtual machine (VM) designed for cryptographic operations where Lua is embedded.
 
-In Zenroom, a significant amount of small memory allocations occur, typically involving octets for hashes, elliptic curve points, cryptographic keys, zero-\/knowledge proofs, and other cryptographic operations. These allocations frequently have sizes below 128 bytes. As cryptographic algorithms evolve, particularly with the advent of post-\/quantum cryptography, the pool size will be fine-\/tuned to accommodate these growing requirements.\hypertarget{index_autotoc_md3}{}\doxysubsection{\texorpdfstring{Usage}{Usage}}\label{index_autotoc_md3}
-To use the custom memory manager in your project, include {\ttfamily \doxylink{sfpool_8h_source}{sfpool.\+h}} and use the provided functions.
+Zenroom\textquotesingle{}s main target is Web\+Assembly (WASM), which \href{https://forkbomb.solutions}{\texttt{ we extensively use at work}} to simplify end-\/to-\/end encryption. This explains the 32-\/bit support of this allocator.
 
-You can also redefine malloc/free/realloc taking advantage of the opaque context pointers, this way you won\textquotesingle{}t need to include our header everywhere and just declare some externs\+:
-
-
-\begin{DoxyCode}{0}
-\DoxyCodeLine{\textcolor{keyword}{extern}\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfpool_ga98123506831517c08e1af7483bb6c58c}{sfpool\_malloc}}\ (\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ size);}
-\DoxyCodeLine{\textcolor{keyword}{extern}\ \textcolor{keywordtype}{bool}\ \ \mbox{\hyperlink{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}{sfpool\_free}}\ \ \ (\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keywordtype}{void}\ *ptr);}
-\DoxyCodeLine{\textcolor{keyword}{extern}\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfpool_ga5df557a924fa77261a35138e515a5768}{sfpool\_realloc}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keywordtype}{void}\ *ptr,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ size);}
-
-\end{DoxyCode}
-
-
-Since the main use-\/case is being a \href{http://www.lua.org/manual/5.3/manual.html\#lua_Alloc}{\texttt{ custom memory manager in Lua}}, the primary usage example is found in \href{https://github.com/dyne/Zenroom/blob/master/src/zen_memory.c}{\texttt{ Zenroom\textquotesingle{}s code src/zen\+\_\+memory.\+c}}.\hypertarget{index_autotoc_md4}{}\doxysubsection{\texorpdfstring{Testing}{Testing}}\label{index_autotoc_md4}
+In Zenroom, a significant amount of small memory allocations occur, typically involving octets for hashes, elliptic curve points, cryptographic keys, zero-\/knowledge proofs, and other cryptographic operations. These allocations frequently have sizes below 256 bytes. As cryptographic algorithms evolve, particularly with the advent of post-\/quantum cryptography, the pool size can be fine-\/tuned to accommodate these growing requirements.\hypertarget{index_autotoc_md2}{}\doxysubsection{\texorpdfstring{Usage}{Usage}}\label{index_autotoc_md2}
+To use the custom memory manager in your project, include {\ttfamily \doxylink{sfpool_8h_source}{sfpool.\+h}} and use the provided functions.\hypertarget{index_autotoc_md3}{}\doxysubsubsection{\texorpdfstring{$<$a href="{}https\+://dyne.\+org/sailfish-\/pool/group\+\_\+\+\_\+sfpool.\+html"{} $>$\+High Level API$<$/a$>$}{<a href="https://dyne.org/sailfish-pool/group\_\_sfpool.html" >High Level API</a>}}\label{index_autotoc_md3}
+The main entry point is \href{https://dyne.org/sailfish-pool/group__sfpool.html}{\texttt{ 🌊 documented here}} and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.\hypertarget{index_autotoc_md4}{}\doxysubsubsection{\texorpdfstring{$<$a href="{}https\+://dyne.\+org/sailfish-\/pool/group\+\_\+\+\_\+sfutil.\+html"{} $>$\+Utilities API$<$/a$>$}{<a href="https://dyne.org/sailfish-pool/group\_\_sfutil.html" >Utilities API</a>}}\label{index_autotoc_md4}
+Some internal functions are exposed as they may be useful also to host applications\+: fast and portable memory zeroing, memory alignment and the internal portable implementations for secure allocation and free.\hypertarget{index_autotoc_md5}{}\doxysubsection{\texorpdfstring{Testing}{Testing}}\label{index_autotoc_md5}
 There is a makefile target in this repository running tests with the address sanitizer\+: just type {\ttfamily make}.
 
 To run these tests inside your source you can always do\+: \begin{DoxyVerb}gcc -D SFPOOL_TEST -o sfpool_test sfpool.c
 time ./sfpool_test
 \end{DoxyVerb}
- The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.\hypertarget{index_autotoc_md5}{}\doxysubsection{\texorpdfstring{License}{License}}\label{index_autotoc_md5}
+ The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.\hypertarget{index_autotoc_md6}{}\doxysubsection{\texorpdfstring{License}{License}}\label{index_autotoc_md6}
 Copyright (C) 2025 Dyne.\+org foundation
 
 Designed and written by Denis "{}\mbox{[}\+Jaromil\mbox{]}(https\+://jaromil.\+dyne.\+org)"{} Roio

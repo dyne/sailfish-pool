@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['case_0',['Intended use case',['../index.html#autotoc_md2',1,'']]]
+  ['case_0',['Intended use case',['../index.html#autotoc_md1',1,'']]]
 ];
