@@ -1,0 +1,34 @@
+name: Doxygen homepage
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
+  pull_request:
+    branches:
+      - main  # Optional: Trigger on pull requests to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install Doxygen
+      - name: Install Doxygen
+        run: sudo apt-get install -y doxygen graphviz
+
+      # Generate Doxygen documentation
+      - name: Generate Doxygen
+        run: doxygen Doxyfile
+
+      # Deploy to gh-pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs  # Directory containing the generated HTML files
+          publish_branch: gh-pages  # Branch to deploy to
