@@ -48,9 +48,9 @@ to accommodate these growing requirements.
 To use the custom memory manager in your project, include `sfpool.h`
 and use the provided functions.
 
-### [High Level API](https://dyne.org/sailfish-pool/group__sfpool.html)
+### High Level API
 
-The main entry point is [🌊 documented
+The main entry point is the [🌊 High Level API documented
 here](https://dyne.org/sailfish-pool/group__sfpool.html) and
 constituted by init/teardown functions initalizing an sfpool context
 and malloc/free/realloc functions for common memory operations. Also a
@@ -59,14 +59,16 @@ report status.
 
 ### [Utilities API](https://dyne.org/sailfish-pool/group__sfutil.html)
 
-Some internal functions are exposed as they may be useful also to host
-applications: fast and portable memory zeroing, memory alignment and
-the internal portable implementations for secure allocation and free.
+Some internal functions are exposed as the [🌊 utilities API
+documented here](https://dyne.org/sailfish-pool/group__sfutil.html)
+and they may be useful also to host applications: fast and portable
+memory zeroing, memory alignment and the internal portable
+implementations for secure allocation and free.
 
-## Testing
+## Quality Assurance
 
 There is a makefile target in this repository running tests with the
-address sanitizer: just type `make`.
+address sanitizer: just type `make check`.
 
 To run these tests inside your source you can always do:
 
@@ -77,11 +79,23 @@ The test suite will allocate and deallocate memory in various patterns
 to simulate different usage scenarios and assert the correctness of
 the memory management.
 
+Additional tests are available: `make wasm` builds and runs the
+test as a WASM binary when `EMSDK` is available and pointing to an
+Emscripten installation.
+
+Then the `make check-lua` target downloads the latest stable Lua
+codebase and compiles it applying sfpool as its main memory allocator,
+then runs the Lua test suite.
+
+All tests are constantly verified in [continuous integration by Github
+actions](https://github.com/dyne/sailfish-pool/actions).
+
+
 ## License
 
 Copyright (C) 2025 Dyne.org foundation
 
-Designed and written by Denis "[Jaromil](https://jaromil.dyne.org)" Roio
+Designed and written by [Jaromil](https://jaromil.dyne.org).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

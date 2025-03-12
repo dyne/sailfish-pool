@@ -10,7 +10,12 @@
 div.header {
     display: none;
 }
-#sm-dox {
+
+div#main-nav {
+	display: none;
+}
+
+.sm-dox {
     display: none;
 }
 .sm {
