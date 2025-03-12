@@ -10,6 +10,10 @@
 div.header {
     display: none;
 }
+a, .contents a:visited {
+	color: #11e0ff;
+	font-weight: bold;
+}
 
 div#main-nav {
 	display: none;

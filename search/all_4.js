@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['group_5f_5fsfutil_20html_20utilities_20api_20a_0',['&lt;a href=&quot;https://dyne.org/sailfish-pool/group__sfutil.html&quot; &gt;Utilities API&lt;/a&gt;',['../index.html#autotoc_md4',1,'']]]
+  ['intended_20use_20case_0',['Intended use case',['../index.html#autotoc_md1',1,'']]],
+  ['internal_20utilities_1',['Internal Utilities',['../group__sfutil.html',1,'']]]
 ];
