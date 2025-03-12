@@ -25,18 +25,24 @@ The primary use case for 🌊 sailfish-\/pool is within \href{https://zenroo.org
 Zenroom\textquotesingle{}s main target is Web\+Assembly (WASM), which \href{https://forkbomb.solutions}{\texttt{ we extensively use at work}} to simplify end-\/to-\/end encryption. This explains the 32-\/bit support of this allocator.
 
 In Zenroom, a significant amount of small memory allocations occur, typically involving octets for hashes, elliptic curve points, cryptographic keys, zero-\/knowledge proofs, and other cryptographic operations. These allocations frequently have sizes below 256 bytes. As cryptographic algorithms evolve, particularly with the advent of post-\/quantum cryptography, the pool size can be fine-\/tuned to accommodate these growing requirements.\hypertarget{index_autotoc_md2}{}\doxysubsection{\texorpdfstring{Usage}{Usage}}\label{index_autotoc_md2}
-To use the custom memory manager in your project, include {\ttfamily \doxylink{sfpool_8h_source}{sfpool.\+h}} and use the provided functions.\hypertarget{index_autotoc_md3}{}\doxysubsubsection{\texorpdfstring{$<$a href="{}https\+://dyne.\+org/sailfish-\/pool/group\+\_\+\+\_\+sfpool.\+html"{} $>$\+High Level API$<$/a$>$}{<a href="https://dyne.org/sailfish-pool/group\_\_sfpool.html" >High Level API</a>}}\label{index_autotoc_md3}
-The main entry point is \href{https://dyne.org/sailfish-pool/group__sfpool.html}{\texttt{ 🌊 documented here}} and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.\hypertarget{index_autotoc_md4}{}\doxysubsubsection{\texorpdfstring{$<$a href="{}https\+://dyne.\+org/sailfish-\/pool/group\+\_\+\+\_\+sfutil.\+html"{} $>$\+Utilities API$<$/a$>$}{<a href="https://dyne.org/sailfish-pool/group\_\_sfutil.html" >Utilities API</a>}}\label{index_autotoc_md4}
-Some internal functions are exposed as they may be useful also to host applications\+: fast and portable memory zeroing, memory alignment and the internal portable implementations for secure allocation and free.\hypertarget{index_autotoc_md5}{}\doxysubsection{\texorpdfstring{Testing}{Testing}}\label{index_autotoc_md5}
-There is a makefile target in this repository running tests with the address sanitizer\+: just type {\ttfamily make}.
+To use the custom memory manager in your project, include {\ttfamily \doxylink{sfpool_8h_source}{sfpool.\+h}} and use the provided functions.\hypertarget{index_autotoc_md3}{}\doxysubsubsection{\texorpdfstring{High Level API}{High Level API}}\label{index_autotoc_md3}
+The main entry point is the \href{https://dyne.org/sailfish-pool/group__sfpool.html}{\texttt{ 🌊 High Level API documented here}} and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.\hypertarget{index_autotoc_md4}{}\doxysubsubsection{\texorpdfstring{$<$a href="{}https\+://dyne.\+org/sailfish-\/pool/group\+\_\+\+\_\+sfutil.\+html"{} $>$\+Utilities API$<$/a$>$}{<a href="https://dyne.org/sailfish-pool/group\_\_sfutil.html" >Utilities API</a>}}\label{index_autotoc_md4}
+Some internal functions are exposed as the \href{https://dyne.org/sailfish-pool/group__sfutil.html}{\texttt{ 🌊 utilities API documented here}} and they may be useful also to host applications\+: fast and portable memory zeroing, memory alignment and the internal portable implementations for secure allocation and free.\hypertarget{index_autotoc_md5}{}\doxysubsection{\texorpdfstring{Quality Assurance}{Quality Assurance}}\label{index_autotoc_md5}
+There is a makefile target in this repository running tests with the address sanitizer\+: just type {\ttfamily make check}.
 
 To run these tests inside your source you can always do\+: \begin{DoxyVerb}gcc -D SFPOOL_TEST -o sfpool_test sfpool.c
 time ./sfpool_test
 \end{DoxyVerb}
- The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.\hypertarget{index_autotoc_md6}{}\doxysubsection{\texorpdfstring{License}{License}}\label{index_autotoc_md6}
+ The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.
+
+Additional tests are available\+: {\ttfamily make wasm} builds and runs the test as a WASM binary when {\ttfamily EMSDK} is available and pointing to an Emscripten installation.
+
+Then the {\ttfamily make check-\/lua} target downloads the latest stable Lua codebase and compiles it applying sfpool as its main memory allocator, then runs the Lua test suite.
+
+All tests are constantly verified in \href{https://github.com/dyne/sailfish-pool/actions}{\texttt{ continuous integration by Github actions}}.\hypertarget{index_autotoc_md6}{}\doxysubsection{\texorpdfstring{License}{License}}\label{index_autotoc_md6}
 Copyright (C) 2025 Dyne.\+org foundation
 
-Designed and written by Denis "{}\mbox{[}\+Jaromil\mbox{]}(https\+://jaromil.\+dyne.\+org)"{} Roio
+Designed and written by \href{https://jaromil.dyne.org}{\texttt{ Jaromil}}.
 
 This program is free software\+: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

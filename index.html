@@ -21,7 +21,6 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr id="projectrow">
-  <td id="projectlogo"><img alt="Logo" src="sailfish-pool-200px.jpg"/></td>
   <td id="projectalign">
    <div id="projectname">🌊 Sailfish pool (sfpool)
    </div>
@@ -99,21 +98,24 @@ Intended use case</h2>
 Usage</h2>
 <p>To use the custom memory manager in your project, include <code><a class="el" href="sfpool_8h_source.html">sfpool.h</a></code> and use the provided functions.</p>
 <h3><a class="anchor" id="autotoc_md3"></a>
-&lt;a href="https://dyne.org/sailfish-pool/group__sfpool.html" &gt;High Level API&lt;/a&gt;</h3>
-<p>The main entry point is <a href="https://dyne.org/sailfish-pool/group__sfpool.html">🌊 documented here</a> and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.</p>
+High Level API</h3>
+<p>The main entry point is the <a href="https://dyne.org/sailfish-pool/group__sfpool.html">🌊 High Level API documented here</a> and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.</p>
 <h3><a class="anchor" id="autotoc_md4"></a>
 &lt;a href="https://dyne.org/sailfish-pool/group__sfutil.html" &gt;Utilities API&lt;/a&gt;</h3>
-<p>Some internal functions are exposed as they may be useful also to host applications: fast and portable memory zeroing, memory alignment and the internal portable implementations for secure allocation and free.</p>
+<p>Some internal functions are exposed as the <a href="https://dyne.org/sailfish-pool/group__sfutil.html">🌊 utilities API documented here</a> and they may be useful also to host applications: fast and portable memory zeroing, memory alignment and the internal portable implementations for secure allocation and free.</p>
 <h2><a class="anchor" id="autotoc_md5"></a>
-Testing</h2>
-<p>There is a makefile target in this repository running tests with the address sanitizer: just type <code>make</code>.</p>
+Quality Assurance</h2>
+<p>There is a makefile target in this repository running tests with the address sanitizer: just type <code>make check</code>.</p>
 <p>To run these tests inside your source you can always do: </p><pre class="fragment">gcc -D SFPOOL_TEST -o sfpool_test sfpool.c
 time ./sfpool_test
 </pre><p> The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.</p>
+<p>Additional tests are available: <code>make wasm</code> builds and runs the test as a WASM binary when <code>EMSDK</code> is available and pointing to an Emscripten installation.</p>
+<p>Then the <code>make check-lua</code> target downloads the latest stable Lua codebase and compiles it applying sfpool as its main memory allocator, then runs the Lua test suite.</p>
+<p>All tests are constantly verified in <a href="https://github.com/dyne/sailfish-pool/actions">continuous integration by Github actions</a>.</p>
 <h2><a class="anchor" id="autotoc_md6"></a>
 License</h2>
 <p>Copyright (C) 2025 Dyne.org foundation</p>
-<p>Designed and written by Denis "[Jaromil](https://jaromil.dyne.org)" Roio</p>
+<p>Designed and written by <a href="https://jaromil.dyne.org">Jaromil</a>.</p>
 <p>This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.</p>
 <p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.</p>
 <p>You should have received a copy of the GNU General Public License along with this program. If not, see <a href="https://www.gnu.org/licenses/">https://www.gnu.org/licenses/</a>.</p>
