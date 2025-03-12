@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2025 Dyne.org foundation
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Copyright (C) 2025 Dyne.org foundation
  * designed, written and maintained by Denis Roio <jaromil@dyne.org>
