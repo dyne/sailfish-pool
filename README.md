@@ -57,7 +57,7 @@ and malloc/free/realloc functions for common memory operations. Also a
 function to verify if a pointer is contained in the pool and one to
 report status.
 
-### [Utilities API](https://dyne.org/sailfish-pool/group__sfutil.html)
+### Utilities API
 
 Some internal functions are exposed as the [🌊 utilities API
 documented here](https://dyne.org/sailfish-pool/group__sfutil.html)

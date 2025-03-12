@@ -12,7 +12,17 @@ OUTPUT_LANGUAGE        = English
 
 INPUT = ./
 FILE_PATTERNS          = sfpool.h README.md
-HTML_EXTRA_STYLESHEET  = doxyfile.css
+
+# # Doxygen awesome theme
+# GENERATE_TREEVIEW      = YES # required!
+# DISABLE_INDEX          = NO
+# FULL_SIDEBAR           = NO
+HTML_HEADER            = doxygen-header.html
+HTML_EXTRA_STYLESHEET  = doxygen-custom.css
+# HTML_EXTRA_STYLESHEET  = doxygen-awesome.css \
+#                          doxygen-awesome-sidebar-only.css
+# HTML_COLORSTYLE        = LIGHT # required with Doxygen >= 1.9.5
+
 
 # Main page
 MARKDOWN_SUPPORT = YES
