@@ -1,0 +1,97 @@
+\doxysection{Internal Utilities}
+\hypertarget{group__sfutil}{}\label{group__sfutil}\index{Internal Utilities@{Internal Utilities}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\+\_\+zero}} (void \texorpdfstring{$\ast$}{*}ptr, uint32\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Zeroes out a block of memory. \end{DoxyCompactList}\item 
+void \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe}{sfutil\+\_\+memalign}} (const void \texorpdfstring{$\ast$}{*}ptr)
+\begin{DoxyCompactList}\small\item\em Aligns a pointer to the nearest boundary. \end{DoxyCompactList}\item 
+void \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7}{sfutil\+\_\+secalloc}} (size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Allocates memory securely. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf}{sfutil\+\_\+secfree}} (void \texorpdfstring{$\ast$}{*}ptr, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Frees memory allocated securely. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe}\label{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe} 
+\index{Internal Utilities@{Internal Utilities}!sfutil\_memalign@{sfutil\_memalign}}
+\index{sfutil\_memalign@{sfutil\_memalign}!Internal Utilities@{Internal Utilities}}
+\doxysubsubsection{\texorpdfstring{sfutil\_memalign()}{sfutil\_memalign()}}
+{\footnotesize\ttfamily void \texorpdfstring{$\ast$}{*} sfutil\+\_\+memalign (\begin{DoxyParamCaption}\item[{const void \texorpdfstring{$\ast$}{*}}]{ptr }\end{DoxyParamCaption})}
+
+
+
+Aligns a pointer to the nearest boundary. 
+
+This function aligns the given pointer to the nearest boundary specified by {\ttfamily ptr\+\_\+align}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to align. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Aligned pointer. 
+\end{DoxyReturn}
+\Hypertarget{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7}\label{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7} 
+\index{Internal Utilities@{Internal Utilities}!sfutil\_secalloc@{sfutil\_secalloc}}
+\index{sfutil\_secalloc@{sfutil\_secalloc}!Internal Utilities@{Internal Utilities}}
+\doxysubsubsection{\texorpdfstring{sfutil\_secalloc()}{sfutil\_secalloc()}}
+{\footnotesize\ttfamily void \texorpdfstring{$\ast$}{*} sfutil\+\_\+secalloc (\begin{DoxyParamCaption}\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Allocates memory securely. 
+
+This function allocates memory securely, ensuring it is aligned and locked (if supported by the platform).
+
+
+\begin{DoxyParams}{Parameters}
+{\em size} & Size of the memory block to allocate. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the allocated memory block, or NULL on failure. 
+\end{DoxyReturn}
+\Hypertarget{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf}\label{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf} 
+\index{Internal Utilities@{Internal Utilities}!sfutil\_secfree@{sfutil\_secfree}}
+\index{sfutil\_secfree@{sfutil\_secfree}!Internal Utilities@{Internal Utilities}}
+\doxysubsubsection{\texorpdfstring{sfutil\_secfree()}{sfutil\_secfree()}}
+{\footnotesize\ttfamily void sfutil\+\_\+secfree (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{ptr,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Frees memory allocated securely. 
+
+This function frees memory that was allocated using {\ttfamily sfutil\+\_\+secalloc}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to the memory block to free. \\
+\hline
+{\em size} & Size of the memory block in bytes. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}\label{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df} 
+\index{Internal Utilities@{Internal Utilities}!sfutil\_zero@{sfutil\_zero}}
+\index{sfutil\_zero@{sfutil\_zero}!Internal Utilities@{Internal Utilities}}
+\doxysubsubsection{\texorpdfstring{sfutil\_zero()}{sfutil\_zero()}}
+{\footnotesize\ttfamily void sfutil\+\_\+zero (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{ptr,  }\item[{uint32\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Zeroes out a block of memory. 
+
+This function sets a block of memory to zero using 32-\/bit writes for efficiency.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to the memory block to zero out. \\
+\hline
+{\em size} & Size of the memory block in bytes. \\
+\hline
+\end{DoxyParams}

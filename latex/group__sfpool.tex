@@ -1,0 +1,170 @@
+\doxysection{High-\/\+Level API}
+\hypertarget{group__sfpool}{}\label{group__sfpool}\index{High-\/Level API@{High-\/Level API}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+size\+\_\+t \mbox{\hyperlink{group__sfpool_ga02d098e63a1c84154ee9851af005487d}{sfpool\+\_\+init}} (sfpool\+\_\+t \texorpdfstring{$\ast$}{*}pool, size\+\_\+t nmemb, size\+\_\+t blocksize)
+\begin{DoxyCompactList}\small\item\em Initializes a memory pool. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__sfpool_ga5d0b52156ba7b30743f8bcc673028342}{sfpool\+\_\+teardown}} (sfpool\+\_\+t \texorpdfstring{$\ast$}{*}restrict pool)
+\begin{DoxyCompactList}\small\item\em Tears down a memory pool. \end{DoxyCompactList}\item 
+void \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{group__sfpool_ga98123506831517c08e1af7483bb6c58c}{sfpool\+\_\+malloc}} (void \texorpdfstring{$\ast$}{*}restrict opaque, const size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Allocates memory from the pool. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}{sfpool\+\_\+free}} (void \texorpdfstring{$\ast$}{*}restrict opaque, void \texorpdfstring{$\ast$}{*}ptr)
+\begin{DoxyCompactList}\small\item\em Frees memory allocated from the pool. \end{DoxyCompactList}\item 
+void \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{group__sfpool_ga5df557a924fa77261a35138e515a5768}{sfpool\+\_\+realloc}} (void \texorpdfstring{$\ast$}{*}restrict opaque, void \texorpdfstring{$\ast$}{*}ptr, const size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Reallocates memory from the pool. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__sfpool_ga17c30db6a18fb8c69502725ad5be655f}{sfpool\+\_\+contains}} (void \texorpdfstring{$\ast$}{*}restrict opaque, const void \texorpdfstring{$\ast$}{*}ptr)
+\begin{DoxyCompactList}\small\item\em Checks if a pointer is within the memory pool. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__sfpool_ga189d738e89bb18e982baa7c56f48f283}{sfpool\+\_\+status}} (sfpool\+\_\+t \texorpdfstring{$\ast$}{*}restrict p)
+\begin{DoxyCompactList}\small\item\em Prints the status of the memory pool. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__sfpool_ga17c30db6a18fb8c69502725ad5be655f}\label{group__sfpool_ga17c30db6a18fb8c69502725ad5be655f} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_contains@{sfpool\_contains}}
+\index{sfpool\_contains@{sfpool\_contains}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_contains()}{sfpool\_contains()}}
+{\footnotesize\ttfamily int sfpool\+\_\+contains (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}restrict}]{opaque,  }\item[{const void \texorpdfstring{$\ast$}{*}}]{ptr }\end{DoxyParamCaption})}
+
+
+
+Checks if a pointer is within the memory pool. 
+
+This function checks if the given pointer is within the memory pool.
+
+
+\begin{DoxyParams}{Parameters}
+{\em opaque} & Pointer to the memory pool structure. \\
+\hline
+{\em ptr} & Pointer to check. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if the pointer is within the pool, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}\label{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_free@{sfpool\_free}}
+\index{sfpool\_free@{sfpool\_free}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_free()}{sfpool\_free()}}
+{\footnotesize\ttfamily void sfpool\+\_\+free (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}restrict}]{opaque,  }\item[{void \texorpdfstring{$\ast$}{*}}]{ptr }\end{DoxyParamCaption})}
+
+
+
+Frees memory allocated from the pool. 
+
+This function frees memory that was allocated from the pool. If the memory was not allocated from the pool, it falls back to system free (if enabled).
+
+
+\begin{DoxyParams}{Parameters}
+{\em opaque} & Pointer to the memory pool structure. \\
+\hline
+{\em ptr} & Pointer to the memory block to free. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{group__sfpool_ga02d098e63a1c84154ee9851af005487d}\label{group__sfpool_ga02d098e63a1c84154ee9851af005487d} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_init@{sfpool\_init}}
+\index{sfpool\_init@{sfpool\_init}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_init()}{sfpool\_init()}}
+{\footnotesize\ttfamily size\+\_\+t sfpool\+\_\+init (\begin{DoxyParamCaption}\item[{sfpool\+\_\+t \texorpdfstring{$\ast$}{*}}]{pool,  }\item[{size\+\_\+t}]{nmemb,  }\item[{size\+\_\+t}]{blocksize }\end{DoxyParamCaption})}
+
+
+
+Initializes a memory pool. 
+
+This function initializes a memory pool with a specified number of blocks and block size. The block size must be a power of two.
+
+
+\begin{DoxyParams}{Parameters}
+{\em pool} & Pointer to the memory pool structure to initialize. \\
+\hline
+{\em nmemb} & Number of blocks in the pool. \\
+\hline
+{\em blocksize} & Size of each block in bytes. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Total size of the memory pool in bytes, or 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{group__sfpool_ga98123506831517c08e1af7483bb6c58c}\label{group__sfpool_ga98123506831517c08e1af7483bb6c58c} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_malloc@{sfpool\_malloc}}
+\index{sfpool\_malloc@{sfpool\_malloc}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_malloc()}{sfpool\_malloc()}}
+{\footnotesize\ttfamily void \texorpdfstring{$\ast$}{*} sfpool\+\_\+malloc (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}restrict}]{opaque,  }\item[{const size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Allocates memory from the pool. 
+
+This function allocates memory from the pool if the requested size is within the block size. Otherwise, it falls back to system malloc.
+
+
+\begin{DoxyParams}{Parameters}
+{\em opaque} & Pointer to the memory pool structure. \\
+\hline
+{\em size} & Size of the memory block to allocate. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the allocated memory block, or NULL on failure. 
+\end{DoxyReturn}
+\Hypertarget{group__sfpool_ga5df557a924fa77261a35138e515a5768}\label{group__sfpool_ga5df557a924fa77261a35138e515a5768} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_realloc@{sfpool\_realloc}}
+\index{sfpool\_realloc@{sfpool\_realloc}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_realloc()}{sfpool\_realloc()}}
+{\footnotesize\ttfamily void \texorpdfstring{$\ast$}{*} sfpool\+\_\+realloc (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}restrict}]{opaque,  }\item[{void \texorpdfstring{$\ast$}{*}}]{ptr,  }\item[{const size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Reallocates memory from the pool. 
+
+This function reallocates memory from the pool. If the new size is larger than the block size, it allocates new memory using system malloc and copies the old data.
+
+
+\begin{DoxyParams}{Parameters}
+{\em opaque} & Pointer to the memory pool structure. \\
+\hline
+{\em ptr} & Pointer to the memory block to reallocate. \\
+\hline
+{\em size} & New size of the memory block. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the reallocated memory block, or NULL on failure. 
+\end{DoxyReturn}
+\Hypertarget{group__sfpool_ga189d738e89bb18e982baa7c56f48f283}\label{group__sfpool_ga189d738e89bb18e982baa7c56f48f283} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_status@{sfpool\_status}}
+\index{sfpool\_status@{sfpool\_status}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_status()}{sfpool\_status()}}
+{\footnotesize\ttfamily void sfpool\+\_\+status (\begin{DoxyParamCaption}\item[{sfpool\+\_\+t \texorpdfstring{$\ast$}{*}restrict}]{p }\end{DoxyParamCaption})}
+
+
+
+Prints the status of the memory pool. 
+
+This function prints the current status of the memory pool, including the number of blocks, block size, and profiling information (if enabled).
+
+
+\begin{DoxyParams}{Parameters}
+{\em p} & Pointer to the memory pool structure. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{group__sfpool_ga5d0b52156ba7b30743f8bcc673028342}\label{group__sfpool_ga5d0b52156ba7b30743f8bcc673028342} 
+\index{High-\/Level API@{High-\/Level API}!sfpool\_teardown@{sfpool\_teardown}}
+\index{sfpool\_teardown@{sfpool\_teardown}!High-\/Level API@{High-\/Level API}}
+\doxysubsubsection{\texorpdfstring{sfpool\_teardown()}{sfpool\_teardown()}}
+{\footnotesize\ttfamily void sfpool\+\_\+teardown (\begin{DoxyParamCaption}\item[{sfpool\+\_\+t \texorpdfstring{$\ast$}{*}restrict}]{pool }\end{DoxyParamCaption})}
+
+
+
+Tears down a memory pool. 
+
+This function releases all resources associated with the memory pool.
+
+
+\begin{DoxyParams}{Parameters}
+{\em pool} & Pointer to the memory pool structure to tear down. \\
+\hline
+\end{DoxyParams}
