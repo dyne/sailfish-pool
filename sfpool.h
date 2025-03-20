@@ -44,8 +44,18 @@
 #define FALLBACK   // Enable fallback to system alloc
 #define PROFILING // Profile most used sizes allocated
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
+#define ptr_t uint64_t
+#define ptr_align 8
+#define struct_align 16
+#else
+#define ptr_t uint32_t
+#define ptr_align 4
+#define struct_align 8
+#endif
+
 // Memory pool structure
-typedef struct sfpool_t {
+typedef struct __attribute__((aligned(struct_align))) sfpool_t {
   uint8_t *buffer; // raw
   uint8_t *data; // aligned
   uint8_t *free_list;
@@ -63,13 +73,7 @@ typedef struct sfpool_t {
 #endif
 } sfpool_t;
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
-#define ptr_t uint64_t
-#define ptr_align 8
-#else
-#define ptr_t uint32_t
-#define ptr_align 4
-#endif
+
 #if !defined(__MUSL__)
 static_assert(sizeof(ptr_t) == sizeof(void*), "Unknown memory pointer size detected");
 #endif
