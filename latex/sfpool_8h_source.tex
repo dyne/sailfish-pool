@@ -47,252 +47,256 @@
 \DoxyCodeLine{00044\ \textcolor{preprocessor}{\#define\ FALLBACK\ \ \ }\textcolor{comment}{//\ Enable\ fallback\ to\ system\ alloc}}
 \DoxyCodeLine{00045\ \textcolor{preprocessor}{\#define\ PROFILING\ }\textcolor{comment}{//\ Profile\ most\ used\ sizes\ allocated}}
 \DoxyCodeLine{00046\ }
-\DoxyCodeLine{00047\ \textcolor{comment}{//\ Memory\ pool\ structure}}
-\DoxyCodeLine{00048\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }sfpool\_t\ \{}
-\DoxyCodeLine{00049\ \ \ uint8\_t\ *buffer;\ \textcolor{comment}{//\ raw}}
-\DoxyCodeLine{00050\ \ \ uint8\_t\ *data;\ \textcolor{comment}{//\ aligned}}
-\DoxyCodeLine{00051\ \ \ uint8\_t\ *free\_list;}
-\DoxyCodeLine{00052\ \ \ uint32\_t\ free\_count;}
-\DoxyCodeLine{00053\ \ \ uint32\_t\ total\_blocks;}
-\DoxyCodeLine{00054\ \ \ uint32\_t\ total\_bytes;}
-\DoxyCodeLine{00055\ \ \ uint32\_t\ block\_size;}
-\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00057\ \ \ uint32\_t\ *hits;}
-\DoxyCodeLine{00058\ \ \ uint32\_t\ hits\_total;}
-\DoxyCodeLine{00059\ \ \ \textcolor{keywordtype}{size\_t}\ \ \ hits\_bytes;}
-\DoxyCodeLine{00060\ \ \ uint32\_t\ miss\_total;}
-\DoxyCodeLine{00061\ \ \ \textcolor{keywordtype}{size\_t}\ \ \ miss\_bytes;}
-\DoxyCodeLine{00062\ \ \ \textcolor{keywordtype}{size\_t}\ \ \ alloc\_total;}
-\DoxyCodeLine{00063\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00064\ \}\ sfpool\_t;}
-\DoxyCodeLine{00065\ }
-\DoxyCodeLine{00066\ \textcolor{preprocessor}{\#if\ defined(\_\_x86\_64\_\_)\ ||\ defined(\_M\_X64)\ ||\ defined(\_\_ppc64\_\_)\ ||\ defined(\_\_LP64\_\_)}}
-\DoxyCodeLine{00067\ \textcolor{preprocessor}{\#define\ ptr\_t\ uint64\_t}}
-\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#define\ ptr\_align\ 8}}
-\DoxyCodeLine{00069\ \textcolor{preprocessor}{\#else}}
-\DoxyCodeLine{00070\ \textcolor{preprocessor}{\#define\ ptr\_t\ uint32\_t}}
-\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#define\ ptr\_align\ 4}}
-\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00073\ \textcolor{preprocessor}{\#if\ !defined(\_\_MUSL\_\_)}}
-\DoxyCodeLine{00074\ \textcolor{keyword}{static\_assert}(\textcolor{keyword}{sizeof}(ptr\_t)\ ==\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{void}*),\ \textcolor{stringliteral}{"{}Unknown\ memory\ pointer\ size\ detected"{}});}
-\DoxyCodeLine{00075\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00076\ \textcolor{keyword}{static}\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{bool}\ \_is\_in\_pool(sfpool\_t\ *pool,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *ptr)\ \{}
-\DoxyCodeLine{00077\ \ \ \textcolor{keyword}{volatile}\ ptr\_t\ p\ =\ (ptr\_t)ptr;}
-\DoxyCodeLine{00078\ \ \ \textcolor{keywordflow}{return}(p\ >=\ (ptr\_t)pool-\/>data}
-\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \&\&\ p\ <\ (ptr\_t)(pool-\/>data\ +\ pool-\/>total\_bytes));}
-\DoxyCodeLine{00080\ \}}
-\DoxyCodeLine{00081\ }
-\DoxyCodeLine{00095\ \textcolor{keywordtype}{void}\ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(\textcolor{keywordtype}{void}\ *ptr,\ uint32\_t\ size)\ \{}
-\DoxyCodeLine{00096\ \ \ \textcolor{keyword}{register}\ uint32\_t\ *p\ =\ (uint32\_t*)ptr;\ \textcolor{comment}{//\ use\ 32bit\ pointer}}
-\DoxyCodeLine{00097\ \ \ \textcolor{keyword}{register}\ uint32\_t\ s\ =\ (size>>2);\ \textcolor{comment}{//\ divide\ counter\ by\ 4}}
-\DoxyCodeLine{00098\ \ \ \textcolor{keywordflow}{while}\ (s-\/-\/)\ *p++\ =\ 0x0;\ \textcolor{comment}{//\ hit\ the\ road\ jack}}
-\DoxyCodeLine{00099\ \}}
-\DoxyCodeLine{00100\ }
-\DoxyCodeLine{00109\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe}{sfutil\_memalign}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{void}*\ ptr)\ \{}
-\DoxyCodeLine{00110\ \ \ \ \ \textcolor{keyword}{register}\ ptr\_t\ mask\ =\ ptr\_align\ -\/\ 1;}
-\DoxyCodeLine{00111\ \ \ \ \ ptr\_t\ aligned\ =\ ((ptr\_t)ptr\ +\ mask)\ \&\ \string~mask;}
-\DoxyCodeLine{00112\ \ \ \ \ \textcolor{keywordflow}{return}\ (\textcolor{keywordtype}{void}*)aligned;}
-\DoxyCodeLine{00113\ \}}
-\DoxyCodeLine{00114\ }
-\DoxyCodeLine{00123\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7}{sfutil\_secalloc}}(\textcolor{keywordtype}{size\_t}\ size)\ \{}
-\DoxyCodeLine{00124\ \ \ \ \ \textcolor{comment}{//\ add\ bytes\ to\ every\ allocation\ to\ support\ alignment}}
-\DoxyCodeLine{00125\ \ \ \ \ \textcolor{keywordtype}{void}\ *res\ =\ NULL;}
-\DoxyCodeLine{00126\ \textcolor{preprocessor}{\#if\ defined(\_\_EMSCRIPTEN\_\_)}}
-\DoxyCodeLine{00127\ \ \ \ \ res\ =\ (uint8\_t\ *)malloc(size+ptr\_align);}
-\DoxyCodeLine{00128\ \textcolor{preprocessor}{\#elif\ defined(\_WIN32)}}
-\DoxyCodeLine{00129\ \ \ \ \ res\ =\ VirtualAlloc(NULL,\ size+ptr\_align,}
-\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MEM\_COMMIT\ |\ MEM\_RESERVE,\ PAGE\_READWRITE);}
-\DoxyCodeLine{00131\ \textcolor{preprocessor}{\#elif\ defined(\_\_APPLE\_\_)}}
-\DoxyCodeLine{00132\ \ \ \ \ \textcolor{keywordtype}{int}\ flags\ =\ MAP\_PRIVATE\ |\ MAP\_ANONYMOUS\ |\ MAP\_NORESERVE;}
-\DoxyCodeLine{00133\ \ \ \ \ res\ =\ mmap(NULL,\ size,\ PROT\_READ\ |\ PROT\_WRITE,\ flags,\ -\/1,\ 0);}
-\DoxyCodeLine{00134\ \ \ \ \ mlock(res,\ size);}
-\DoxyCodeLine{00135\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ assume\ POSIX}}
+\DoxyCodeLine{00047\ \textcolor{preprocessor}{\#if\ defined(\_\_x86\_64\_\_)\ ||\ defined(\_M\_X64)\ ||\ defined(\_\_ppc64\_\_)\ ||\ defined(\_\_LP64\_\_)}}
+\DoxyCodeLine{00048\ \textcolor{preprocessor}{\#define\ ptr\_t\ uint64\_t}}
+\DoxyCodeLine{00049\ \textcolor{preprocessor}{\#define\ ptr\_align\ 8}}
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\#define\ struct\_align\ 16}}
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#define\ ptr\_t\ uint32\_t}}
+\DoxyCodeLine{00053\ \textcolor{preprocessor}{\#define\ ptr\_align\ 4}}
+\DoxyCodeLine{00054\ \textcolor{preprocessor}{\#define\ struct\_align\ 8}}
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \textcolor{comment}{//\ Memory\ pool\ structure}}
+\DoxyCodeLine{00058\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\_\_attribute\_\_((aligned(struct\_align)))\ sfpool\_t\ \{}
+\DoxyCodeLine{00059\ \ \ uint8\_t\ *buffer;\ \textcolor{comment}{//\ raw}}
+\DoxyCodeLine{00060\ \ \ uint8\_t\ *data;\ \textcolor{comment}{//\ aligned}}
+\DoxyCodeLine{00061\ \ \ uint8\_t\ *free\_list;}
+\DoxyCodeLine{00062\ \ \ uint32\_t\ free\_count;}
+\DoxyCodeLine{00063\ \ \ uint32\_t\ total\_blocks;}
+\DoxyCodeLine{00064\ \ \ uint32\_t\ total\_bytes;}
+\DoxyCodeLine{00065\ \ \ uint32\_t\ block\_size;}
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00067\ \ \ uint32\_t\ *hits;}
+\DoxyCodeLine{00068\ \ \ uint32\_t\ hits\_total;}
+\DoxyCodeLine{00069\ \ \ \textcolor{keywordtype}{size\_t}\ \ \ hits\_bytes;}
+\DoxyCodeLine{00070\ \ \ uint32\_t\ miss\_total;}
+\DoxyCodeLine{00071\ \ \ \textcolor{keywordtype}{size\_t}\ \ \ miss\_bytes;}
+\DoxyCodeLine{00072\ \ \ \textcolor{keywordtype}{size\_t}\ \ \ alloc\_total;}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00074\ \}\ sfpool\_t;}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ }
+\DoxyCodeLine{00077\ \textcolor{preprocessor}{\#if\ !defined(\_\_MUSL\_\_)}}
+\DoxyCodeLine{00078\ \textcolor{keyword}{static\_assert}(\textcolor{keyword}{sizeof}(ptr\_t)\ ==\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{void}*),\ \textcolor{stringliteral}{"{}Unknown\ memory\ pointer\ size\ detected"{}});}
+\DoxyCodeLine{00079\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00080\ \textcolor{keyword}{static}\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{bool}\ \_is\_in\_pool(sfpool\_t\ *pool,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *ptr)\ \{}
+\DoxyCodeLine{00081\ \ \ \textcolor{keyword}{volatile}\ ptr\_t\ p\ =\ (ptr\_t)ptr;}
+\DoxyCodeLine{00082\ \ \ \textcolor{keywordflow}{return}(p\ >=\ (ptr\_t)pool-\/>data}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \&\&\ p\ <\ (ptr\_t)(pool-\/>data\ +\ pool-\/>total\_bytes));}
+\DoxyCodeLine{00084\ \}}
+\DoxyCodeLine{00085\ }
+\DoxyCodeLine{00099\ \textcolor{keywordtype}{void}\ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(\textcolor{keywordtype}{void}\ *ptr,\ uint32\_t\ size)\ \{}
+\DoxyCodeLine{00100\ \ \ \textcolor{keyword}{register}\ uint32\_t\ *p\ =\ (uint32\_t*)ptr;\ \textcolor{comment}{//\ use\ 32bit\ pointer}}
+\DoxyCodeLine{00101\ \ \ \textcolor{keyword}{register}\ uint32\_t\ s\ =\ (size>>2);\ \textcolor{comment}{//\ divide\ counter\ by\ 4}}
+\DoxyCodeLine{00102\ \ \ \textcolor{keywordflow}{while}\ (s-\/-\/)\ *p++\ =\ 0x0;\ \textcolor{comment}{//\ hit\ the\ road\ jack}}
+\DoxyCodeLine{00103\ \}}
+\DoxyCodeLine{00104\ }
+\DoxyCodeLine{00113\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe}{sfutil\_memalign}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{void}*\ ptr)\ \{}
+\DoxyCodeLine{00114\ \ \ \ \ \textcolor{keyword}{register}\ ptr\_t\ mask\ =\ ptr\_align\ -\/\ 1;}
+\DoxyCodeLine{00115\ \ \ \ \ ptr\_t\ aligned\ =\ ((ptr\_t)ptr\ +\ mask)\ \&\ \string~mask;}
+\DoxyCodeLine{00116\ \ \ \ \ \textcolor{keywordflow}{return}\ (\textcolor{keywordtype}{void}*)aligned;}
+\DoxyCodeLine{00117\ \}}
+\DoxyCodeLine{00118\ }
+\DoxyCodeLine{00127\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7}{sfutil\_secalloc}}(\textcolor{keywordtype}{size\_t}\ size)\ \{}
+\DoxyCodeLine{00128\ \ \ \ \ \textcolor{comment}{//\ add\ bytes\ to\ every\ allocation\ to\ support\ alignment}}
+\DoxyCodeLine{00129\ \ \ \ \ \textcolor{keywordtype}{void}\ *res\ =\ NULL;}
+\DoxyCodeLine{00130\ \textcolor{preprocessor}{\#if\ defined(\_\_EMSCRIPTEN\_\_)}}
+\DoxyCodeLine{00131\ \ \ \ \ res\ =\ (uint8\_t\ *)malloc(size+ptr\_align);}
+\DoxyCodeLine{00132\ \textcolor{preprocessor}{\#elif\ defined(\_WIN32)}}
+\DoxyCodeLine{00133\ \ \ \ \ res\ =\ VirtualAlloc(NULL,\ size+ptr\_align,}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MEM\_COMMIT\ |\ MEM\_RESERVE,\ PAGE\_READWRITE);}
+\DoxyCodeLine{00135\ \textcolor{preprocessor}{\#elif\ defined(\_\_APPLE\_\_)}}
 \DoxyCodeLine{00136\ \ \ \ \ \textcolor{keywordtype}{int}\ flags\ =\ MAP\_PRIVATE\ |\ MAP\_ANONYMOUS\ |\ MAP\_NORESERVE;}
-\DoxyCodeLine{00137\ \ \ \ \ \textcolor{keyword}{struct\ }rlimit\ rl;}
-\DoxyCodeLine{00138\ \ \ \ \ \textcolor{keywordflow}{if}\ (getrlimit(RLIMIT\_MEMLOCK,\ \&rl)\ ==\ 0)}
-\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(size<=rl.rlim\_cur)\ flags\ |=\ MAP\_LOCKED;}
-\DoxyCodeLine{00140\ \ \ \ \ res\ =\ mmap(NULL,\ size,\ PROT\_READ\ |\ PROT\_WRITE,\ flags,\ -\/1,\ 0);}
-\DoxyCodeLine{00141\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00142\ \ \ \ \ \textcolor{keywordflow}{return}\ res;}
-\DoxyCodeLine{00143\ \}}
-\DoxyCodeLine{00144\ }
-\DoxyCodeLine{00153\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf}{sfutil\_secfree}}(\textcolor{keywordtype}{void}\ *ptr,\ \textcolor{keywordtype}{size\_t}\ size)\ \{}
-\DoxyCodeLine{00154\ \textcolor{preprocessor}{\#if\ defined(\_\_EMSCRIPTEN\_\_)}}
-\DoxyCodeLine{00155\ \ \ \ \ free(ptr);}
-\DoxyCodeLine{00156\ \textcolor{preprocessor}{\#elif\ defined(\_WIN32)}}
-\DoxyCodeLine{00157\ \ \ \ \ VirtualFree(ptr,\ 0,\ MEM\_RELEASE);}
-\DoxyCodeLine{00158\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ Posix}}
-\DoxyCodeLine{00159\ \ \ \ \ munmap(ptr,\ size\ +ptr\_align);}
-\DoxyCodeLine{00160\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00161\ \}}
-\DoxyCodeLine{00162\ }
- \textcolor{comment}{// End of sfutil group}\DoxyCodeLine{00164\ }
-\DoxyCodeLine{00165\ }
-\DoxyCodeLine{00182\ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{group__sfpool_ga02d098e63a1c84154ee9851af005487d}{sfpool\_init}}(sfpool\_t\ *pool,\ \textcolor{keywordtype}{size\_t}\ nmemb,\ \textcolor{keywordtype}{size\_t}\ blocksize)\ \{}
-\DoxyCodeLine{00183\ \ \ \textcolor{keywordflow}{if}((blocksize\ \&\ (blocksize\ -\/\ 1))\ !=\ 0)\ \textcolor{keywordflow}{return}\ 0;}
-\DoxyCodeLine{00184\ \ \ \textcolor{comment}{//\ SFPool\ blocksize\ must\ be\ a\ power\ of\ two}}
-\DoxyCodeLine{00185\ \ \ \textcolor{keywordtype}{size\_t}\ totalsize\ =\ nmemb\ *\ blocksize;}
-\DoxyCodeLine{00186\ \ \ pool-\/>buffer\ =\ \mbox{\hyperlink{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7}{sfutil\_secalloc}}(totalsize);}
-\DoxyCodeLine{00187\ \ \ \textcolor{keywordflow}{if}\ (pool-\/>buffer\ ==\ NULL)\ \textcolor{keywordflow}{return}\ 0;}
-\DoxyCodeLine{00188\ \ \ \textcolor{comment}{//\ Failed\ to\ allocate\ pool\ memory}}
-\DoxyCodeLine{00189\ \ \ pool-\/>data\ \ \ =\ \mbox{\hyperlink{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe}{sfutil\_memalign}}(pool-\/>buffer);}
-\DoxyCodeLine{00190\ \ \ \textcolor{keywordflow}{if}\ (pool-\/>data\ ==\ NULL)\ \textcolor{keywordflow}{return}\ 0;}
-\DoxyCodeLine{00191\ \ \ \textcolor{comment}{//\ Failed\ to\ allocate\ pool\ memory}}
-\DoxyCodeLine{00192\ \ \ pool-\/>total\_bytes\ \ =\ totalsize;}
-\DoxyCodeLine{00193\ \ \ pool-\/>total\_blocks\ =\ nmemb;}
-\DoxyCodeLine{00194\ \ \ pool-\/>block\_size\ \ \ =\ blocksize;}
-\DoxyCodeLine{00195\ \ \ \textcolor{comment}{//\ Initialize\ the\ embedded\ free\ list}}
-\DoxyCodeLine{00196\ \ \ pool-\/>free\_list\ =\ pool-\/>data;}
-\DoxyCodeLine{00197\ \ \ \textcolor{keyword}{register}\ uint32\_t\ i,\ bi;}
-\DoxyCodeLine{00198\ \ \ \textcolor{keywordflow}{for}\ (i\ =\ 0;\ i\ <\ pool-\/>total\_blocks\ -\/\ 1;\ ++i)\ \{}
-\DoxyCodeLine{00199\ \ \ \ \ bi\ =\ i*blocksize;}
-\DoxyCodeLine{00200\ \ \ \ \ *(uint8\_t\ **)(pool-\/>data\ +\ bi)\ =}
-\DoxyCodeLine{00201\ \ \ \ \ \ \ pool-\/>data\ +\ bi\ +\ blocksize;}
-\DoxyCodeLine{00202\ \ \ \}}
-\DoxyCodeLine{00203\ \ \ pool-\/>free\_count\ =\ pool-\/>total\_blocks;}
-\DoxyCodeLine{00204\ \ \ *(uint8\_t\ **)}
-\DoxyCodeLine{00205\ \ \ \ \ (pool-\/>data\ +\ (pool-\/>total\_blocks\ -\/\ 1)\ *\ blocksize)\ =\ NULL;}
-\DoxyCodeLine{00206\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00207\ \ \ pool-\/>miss\_total\ =\ pool-\/>miss\_bytes\ =\ 0;}
-\DoxyCodeLine{00208\ \ \ pool-\/>hits\_total\ =\ pool-\/>hits\_bytes\ =\ 0;}
-\DoxyCodeLine{00209\ \ \ pool-\/>alloc\_total\ =\ 0;}
-\DoxyCodeLine{00210\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00211\ \ \ \textcolor{keywordflow}{return}\ totalsize;}
-\DoxyCodeLine{00212\ \}}
-\DoxyCodeLine{00213\ }
-\DoxyCodeLine{00214\ }
-\DoxyCodeLine{00222\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfpool_ga5d0b52156ba7b30743f8bcc673028342}{sfpool\_teardown}}(sfpool\_t\ *restrict\ pool)\ \{}
-\DoxyCodeLine{00223\ \ \ \textcolor{comment}{//\ Free\ pool\ memory}}
-\DoxyCodeLine{00224\ \ \ \mbox{\hyperlink{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf}{sfutil\_secfree}}(pool-\/>buffer,\ pool-\/>total\_bytes);}
-\DoxyCodeLine{00225\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00226\ \ \ pool-\/>miss\_total\ =\ pool-\/>miss\_bytes\ =\ 0;}
-\DoxyCodeLine{00227\ \ \ pool-\/>hits\_total\ =\ pool-\/>hits\_bytes\ =\ 0;}
-\DoxyCodeLine{00228\ \ \ pool-\/>alloc\_total\ =\ 0;}
-\DoxyCodeLine{00229\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00230\ \}}
-\DoxyCodeLine{00231\ }
-\DoxyCodeLine{00242\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfpool_ga98123506831517c08e1af7483bb6c58c}{sfpool\_malloc}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ size)\ \{}
-\DoxyCodeLine{00243\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
-\DoxyCodeLine{00244\ \ \ \textcolor{keywordtype}{void}\ *ptr;}
-\DoxyCodeLine{00245\ \ \ \textcolor{keywordflow}{if}\ (size\ <=\ pool-\/>block\_size}
-\DoxyCodeLine{00246\ \ \ \ \ \ \ \&\&\ pool-\/>free\_list\ !=\ NULL)\ \{}
-\DoxyCodeLine{00247\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00248\ \ \ \ \ pool-\/>hits\_total++;}
-\DoxyCodeLine{00249\ \ \ \ \ pool-\/>hits\_bytes+=size;}
-\DoxyCodeLine{00250\ \ \ \ \ pool-\/>alloc\_total+=size;}
-\DoxyCodeLine{00251\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00252\ \ \ \ \ \textcolor{comment}{//\ Remove\ the\ first\ block\ from\ the\ free\ list}}
-\DoxyCodeLine{00253\ \ \ \ \ uint8\_t\ *block\ =\ pool-\/>free\_list;}
-\DoxyCodeLine{00254\ \ \ \ \ pool-\/>free\_list\ =\ *(uint8\_t\ **)block;}
-\DoxyCodeLine{00255\ \ \ \ \ pool-\/>free\_count-\/-\/\ ;}
-\DoxyCodeLine{00256\ \ \ \ \ \textcolor{keywordflow}{return}\ block;}
-\DoxyCodeLine{00257\ \ \ \}}
-\DoxyCodeLine{00258\ \ \ \textcolor{comment}{//\ Fallback\ to\ system\ malloc\ for\ large\ allocations}}
-\DoxyCodeLine{00259\ \ \ ptr\ =\ malloc(size);}
-\DoxyCodeLine{00260\ \ \ \textcolor{keywordflow}{if}(ptr\ ==\ NULL)\ perror(\textcolor{stringliteral}{"{}system\ malloc\ error"{}});}
-\DoxyCodeLine{00261\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00262\ \ \ pool-\/>miss\_total++;}
-\DoxyCodeLine{00263\ \ \ pool-\/>miss\_bytes+=size;}
-\DoxyCodeLine{00264\ \ \ pool-\/>alloc\_total+=size;}
-\DoxyCodeLine{00265\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00266\ \ \ \textcolor{keywordflow}{return}\ ptr;}
-\DoxyCodeLine{00267\ \}}
-\DoxyCodeLine{00268\ }
-\DoxyCodeLine{00269\ }
-\DoxyCodeLine{00279\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}{sfpool\_free}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keywordtype}{void}\ *ptr)\ \{}
-\DoxyCodeLine{00280\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
-\DoxyCodeLine{00281\ \ \ \textcolor{keywordflow}{if}\ (ptr\ ==\ NULL)\ \textcolor{keywordflow}{return};\ \textcolor{comment}{//\ Freeing\ NULL\ is\ a\ no-\/op}}
-\DoxyCodeLine{00282\ \ \ \textcolor{keywordflow}{if}\ (\_is\_in\_pool(pool,ptr))\ \{}
-\DoxyCodeLine{00283\ \ \ \ \ \textcolor{comment}{//\ Add\ the\ block\ back\ to\ the\ free\ list}}
-\DoxyCodeLine{00284\ \ \ \ \ *(uint8\_t\ **)ptr\ =\ pool-\/>free\_list;}
-\DoxyCodeLine{00285\ \ \ \ \ pool-\/>free\_list\ =\ (uint8\_t\ *)ptr;}
-\DoxyCodeLine{00286\ \ \ \ \ pool-\/>free\_count++\ ;}
-\DoxyCodeLine{00287\ \textcolor{preprocessor}{\#ifdef\ SECURE\_ZERO}}
-\DoxyCodeLine{00288\ \ \ \ \ \textcolor{comment}{//\ Zero\ out\ the\ block\ for\ security}}
-\DoxyCodeLine{00289\ \ \ \ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(ptr,\ pool-\/>block\_size);}
-\DoxyCodeLine{00290\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00291\ \ \ \ \ \textcolor{keywordflow}{return};}
-\DoxyCodeLine{00292\ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
-\DoxyCodeLine{00293\ \textcolor{preprocessor}{\#ifdef\ FALLBACK}}
-\DoxyCodeLine{00294\ \ \ \ \ free(ptr);}
-\DoxyCodeLine{00295\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00296\ \ \ \}}
-\DoxyCodeLine{00297\ \}}
-\DoxyCodeLine{00298\ }
-\DoxyCodeLine{00299\ }
-\DoxyCodeLine{00311\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfpool_ga5df557a924fa77261a35138e515a5768}{sfpool\_realloc}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keywordtype}{void}\ *ptr,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ size)\ \{}
-\DoxyCodeLine{00312\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
-\DoxyCodeLine{00313\ \ \ \textcolor{keywordflow}{if}\ (ptr\ ==\ NULL)\ \{}
-\DoxyCodeLine{00314\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{group__sfpool_ga98123506831517c08e1af7483bb6c58c}{sfpool\_malloc}}(pool,\ size);}
-\DoxyCodeLine{00315\ \ \ \}}
-\DoxyCodeLine{00316\ \ \ \textcolor{keywordflow}{if}\ (size\ ==\ 0)\ \{}
-\DoxyCodeLine{00317\ \ \ \ \ \mbox{\hyperlink{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}{sfpool\_free}}(pool,\ ptr);}
-\DoxyCodeLine{00318\ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00137\ \ \ \ \ res\ =\ mmap(NULL,\ size,\ PROT\_READ\ |\ PROT\_WRITE,\ flags,\ -\/1,\ 0);}
+\DoxyCodeLine{00138\ \ \ \ \ mlock(res,\ size);}
+\DoxyCodeLine{00139\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ assume\ POSIX}}
+\DoxyCodeLine{00140\ \ \ \ \ \textcolor{keywordtype}{int}\ flags\ =\ MAP\_PRIVATE\ |\ MAP\_ANONYMOUS\ |\ MAP\_NORESERVE;}
+\DoxyCodeLine{00141\ \ \ \ \ \textcolor{keyword}{struct\ }rlimit\ rl;}
+\DoxyCodeLine{00142\ \ \ \ \ \textcolor{keywordflow}{if}\ (getrlimit(RLIMIT\_MEMLOCK,\ \&rl)\ ==\ 0)}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(size<=rl.rlim\_cur)\ flags\ |=\ MAP\_LOCKED;}
+\DoxyCodeLine{00144\ \ \ \ \ res\ =\ mmap(NULL,\ size,\ PROT\_READ\ |\ PROT\_WRITE,\ flags,\ -\/1,\ 0);}
+\DoxyCodeLine{00145\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00146\ \ \ \ \ \textcolor{keywordflow}{return}\ res;}
+\DoxyCodeLine{00147\ \}}
+\DoxyCodeLine{00148\ }
+\DoxyCodeLine{00157\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf}{sfutil\_secfree}}(\textcolor{keywordtype}{void}\ *ptr,\ \textcolor{keywordtype}{size\_t}\ size)\ \{}
+\DoxyCodeLine{00158\ \textcolor{preprocessor}{\#if\ defined(\_\_EMSCRIPTEN\_\_)}}
+\DoxyCodeLine{00159\ \ \ \ \ free(ptr);}
+\DoxyCodeLine{00160\ \textcolor{preprocessor}{\#elif\ defined(\_WIN32)}}
+\DoxyCodeLine{00161\ \ \ \ \ VirtualFree(ptr,\ 0,\ MEM\_RELEASE);}
+\DoxyCodeLine{00162\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ Posix}}
+\DoxyCodeLine{00163\ \ \ \ \ munmap(ptr,\ size\ +ptr\_align);}
+\DoxyCodeLine{00164\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00165\ \}}
+\DoxyCodeLine{00166\ }
+ \textcolor{comment}{// End of sfutil group}\DoxyCodeLine{00168\ }
+\DoxyCodeLine{00169\ }
+\DoxyCodeLine{00186\ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{group__sfpool_ga02d098e63a1c84154ee9851af005487d}{sfpool\_init}}(sfpool\_t\ *pool,\ \textcolor{keywordtype}{size\_t}\ nmemb,\ \textcolor{keywordtype}{size\_t}\ blocksize)\ \{}
+\DoxyCodeLine{00187\ \ \ \textcolor{keywordflow}{if}((blocksize\ \&\ (blocksize\ -\/\ 1))\ !=\ 0)\ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{00188\ \ \ \textcolor{comment}{//\ SFPool\ blocksize\ must\ be\ a\ power\ of\ two}}
+\DoxyCodeLine{00189\ \ \ \textcolor{keywordtype}{size\_t}\ totalsize\ =\ nmemb\ *\ blocksize;}
+\DoxyCodeLine{00190\ \ \ pool-\/>buffer\ =\ \mbox{\hyperlink{group__sfutil_gaf2227cfcd765c0f8c730046b07fc2ff7}{sfutil\_secalloc}}(totalsize);}
+\DoxyCodeLine{00191\ \ \ \textcolor{keywordflow}{if}\ (pool-\/>buffer\ ==\ NULL)\ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{00192\ \ \ \textcolor{comment}{//\ Failed\ to\ allocate\ pool\ memory}}
+\DoxyCodeLine{00193\ \ \ pool-\/>data\ \ \ =\ \mbox{\hyperlink{group__sfutil_gaf91bc4d66a9c66a8fee26591a5410ffe}{sfutil\_memalign}}(pool-\/>buffer);}
+\DoxyCodeLine{00194\ \ \ \textcolor{keywordflow}{if}\ (pool-\/>data\ ==\ NULL)\ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{00195\ \ \ \textcolor{comment}{//\ Failed\ to\ allocate\ pool\ memory}}
+\DoxyCodeLine{00196\ \ \ pool-\/>total\_bytes\ \ =\ totalsize;}
+\DoxyCodeLine{00197\ \ \ pool-\/>total\_blocks\ =\ nmemb;}
+\DoxyCodeLine{00198\ \ \ pool-\/>block\_size\ \ \ =\ blocksize;}
+\DoxyCodeLine{00199\ \ \ \textcolor{comment}{//\ Initialize\ the\ embedded\ free\ list}}
+\DoxyCodeLine{00200\ \ \ pool-\/>free\_list\ =\ pool-\/>data;}
+\DoxyCodeLine{00201\ \ \ \textcolor{keyword}{register}\ uint32\_t\ i,\ bi;}
+\DoxyCodeLine{00202\ \ \ \textcolor{keywordflow}{for}\ (i\ =\ 0;\ i\ <\ pool-\/>total\_blocks\ -\/\ 1;\ ++i)\ \{}
+\DoxyCodeLine{00203\ \ \ \ \ bi\ =\ i*blocksize;}
+\DoxyCodeLine{00204\ \ \ \ \ *(uint8\_t\ **)(pool-\/>data\ +\ bi)\ =}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ pool-\/>data\ +\ bi\ +\ blocksize;}
+\DoxyCodeLine{00206\ \ \ \}}
+\DoxyCodeLine{00207\ \ \ pool-\/>free\_count\ =\ pool-\/>total\_blocks;}
+\DoxyCodeLine{00208\ \ \ *(uint8\_t\ **)}
+\DoxyCodeLine{00209\ \ \ \ \ (pool-\/>data\ +\ (pool-\/>total\_blocks\ -\/\ 1)\ *\ blocksize)\ =\ NULL;}
+\DoxyCodeLine{00210\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00211\ \ \ pool-\/>miss\_total\ =\ pool-\/>miss\_bytes\ =\ 0;}
+\DoxyCodeLine{00212\ \ \ pool-\/>hits\_total\ =\ pool-\/>hits\_bytes\ =\ 0;}
+\DoxyCodeLine{00213\ \ \ pool-\/>alloc\_total\ =\ 0;}
+\DoxyCodeLine{00214\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00215\ \ \ \textcolor{keywordflow}{return}\ totalsize;}
+\DoxyCodeLine{00216\ \}}
+\DoxyCodeLine{00217\ }
+\DoxyCodeLine{00218\ }
+\DoxyCodeLine{00226\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfpool_ga5d0b52156ba7b30743f8bcc673028342}{sfpool\_teardown}}(sfpool\_t\ *restrict\ pool)\ \{}
+\DoxyCodeLine{00227\ \ \ \textcolor{comment}{//\ Free\ pool\ memory}}
+\DoxyCodeLine{00228\ \ \ \mbox{\hyperlink{group__sfutil_gab4fb46e2a36d219760d0cba52bb25cbf}{sfutil\_secfree}}(pool-\/>buffer,\ pool-\/>total\_bytes);}
+\DoxyCodeLine{00229\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00230\ \ \ pool-\/>miss\_total\ =\ pool-\/>miss\_bytes\ =\ 0;}
+\DoxyCodeLine{00231\ \ \ pool-\/>hits\_total\ =\ pool-\/>hits\_bytes\ =\ 0;}
+\DoxyCodeLine{00232\ \ \ pool-\/>alloc\_total\ =\ 0;}
+\DoxyCodeLine{00233\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00234\ \}}
+\DoxyCodeLine{00235\ }
+\DoxyCodeLine{00246\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfpool_ga98123506831517c08e1af7483bb6c58c}{sfpool\_malloc}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ size)\ \{}
+\DoxyCodeLine{00247\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
+\DoxyCodeLine{00248\ \ \ \textcolor{keywordtype}{void}\ *ptr;}
+\DoxyCodeLine{00249\ \ \ \textcolor{keywordflow}{if}\ (size\ <=\ pool-\/>block\_size}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ \&\&\ pool-\/>free\_list\ !=\ NULL)\ \{}
+\DoxyCodeLine{00251\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00252\ \ \ \ \ pool-\/>hits\_total++;}
+\DoxyCodeLine{00253\ \ \ \ \ pool-\/>hits\_bytes+=size;}
+\DoxyCodeLine{00254\ \ \ \ \ pool-\/>alloc\_total+=size;}
+\DoxyCodeLine{00255\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00256\ \ \ \ \ \textcolor{comment}{//\ Remove\ the\ first\ block\ from\ the\ free\ list}}
+\DoxyCodeLine{00257\ \ \ \ \ uint8\_t\ *block\ =\ pool-\/>free\_list;}
+\DoxyCodeLine{00258\ \ \ \ \ pool-\/>free\_list\ =\ *(uint8\_t\ **)block;}
+\DoxyCodeLine{00259\ \ \ \ \ pool-\/>free\_count-\/-\/\ ;}
+\DoxyCodeLine{00260\ \ \ \ \ \textcolor{keywordflow}{return}\ block;}
+\DoxyCodeLine{00261\ \ \ \}}
+\DoxyCodeLine{00262\ \ \ \textcolor{comment}{//\ Fallback\ to\ system\ malloc\ for\ large\ allocations}}
+\DoxyCodeLine{00263\ \ \ ptr\ =\ malloc(size);}
+\DoxyCodeLine{00264\ \ \ \textcolor{keywordflow}{if}(ptr\ ==\ NULL)\ perror(\textcolor{stringliteral}{"{}system\ malloc\ error"{}});}
+\DoxyCodeLine{00265\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00266\ \ \ pool-\/>miss\_total++;}
+\DoxyCodeLine{00267\ \ \ pool-\/>miss\_bytes+=size;}
+\DoxyCodeLine{00268\ \ \ pool-\/>alloc\_total+=size;}
+\DoxyCodeLine{00269\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00270\ \ \ \textcolor{keywordflow}{return}\ ptr;}
+\DoxyCodeLine{00271\ \}}
+\DoxyCodeLine{00272\ }
+\DoxyCodeLine{00273\ }
+\DoxyCodeLine{00283\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}{sfpool\_free}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keywordtype}{void}\ *ptr)\ \{}
+\DoxyCodeLine{00284\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
+\DoxyCodeLine{00285\ \ \ \textcolor{keywordflow}{if}\ (ptr\ ==\ NULL)\ \textcolor{keywordflow}{return};\ \textcolor{comment}{//\ Freeing\ NULL\ is\ a\ no-\/op}}
+\DoxyCodeLine{00286\ \ \ \textcolor{keywordflow}{if}\ (\_is\_in\_pool(pool,ptr))\ \{}
+\DoxyCodeLine{00287\ \ \ \ \ \textcolor{comment}{//\ Add\ the\ block\ back\ to\ the\ free\ list}}
+\DoxyCodeLine{00288\ \ \ \ \ *(uint8\_t\ **)ptr\ =\ pool-\/>free\_list;}
+\DoxyCodeLine{00289\ \ \ \ \ pool-\/>free\_list\ =\ (uint8\_t\ *)ptr;}
+\DoxyCodeLine{00290\ \ \ \ \ pool-\/>free\_count++\ ;}
+\DoxyCodeLine{00291\ \textcolor{preprocessor}{\#ifdef\ SECURE\_ZERO}}
+\DoxyCodeLine{00292\ \ \ \ \ \textcolor{comment}{//\ Zero\ out\ the\ block\ for\ security}}
+\DoxyCodeLine{00293\ \ \ \ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(ptr,\ pool-\/>block\_size);}
+\DoxyCodeLine{00294\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00295\ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00296\ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00297\ \textcolor{preprocessor}{\#ifdef\ FALLBACK}}
+\DoxyCodeLine{00298\ \ \ \ \ free(ptr);}
+\DoxyCodeLine{00299\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00300\ \ \ \}}
+\DoxyCodeLine{00301\ \}}
+\DoxyCodeLine{00302\ }
+\DoxyCodeLine{00303\ }
+\DoxyCodeLine{00315\ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{group__sfpool_ga5df557a924fa77261a35138e515a5768}{sfpool\_realloc}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keywordtype}{void}\ *ptr,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ size)\ \{}
+\DoxyCodeLine{00316\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
+\DoxyCodeLine{00317\ \ \ \textcolor{keywordflow}{if}\ (ptr\ ==\ NULL)\ \{}
+\DoxyCodeLine{00318\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{group__sfpool_ga98123506831517c08e1af7483bb6c58c}{sfpool\_malloc}}(pool,\ size);}
 \DoxyCodeLine{00319\ \ \ \}}
-\DoxyCodeLine{00320\ \ \ \textcolor{keywordflow}{if}\ (\_is\_in\_pool((sfpool\_t*)pool,ptr))\ \{}
-\DoxyCodeLine{00321\ \ \ \ \ \textcolor{keywordflow}{if}\ (size\ <=\ pool-\/>block\_size)\ \{}
-\DoxyCodeLine{00322\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00323\ \ \ \ \ \ \ pool-\/>hits\_total++;}
-\DoxyCodeLine{00324\ \ \ \ \ \ \ pool-\/>hits\_bytes+=size;}
-\DoxyCodeLine{00325\ \ \ \ \ \ \ pool-\/>alloc\_total+=size;}
-\DoxyCodeLine{00326\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00327\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ ptr;\ \textcolor{comment}{//\ No\ need\ to\ reallocate}}
-\DoxyCodeLine{00328\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
-\DoxyCodeLine{00329\ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ *new\_ptr\ =\ malloc(size);}
-\DoxyCodeLine{00330\ \ \ \ \ \ \ memcpy(new\_ptr,\ ptr,\ pool-\/>block\_size);\ \textcolor{comment}{//\ Copy\ only\ BLOCK\_SIZE\ bytes}}
-\DoxyCodeLine{00331\ \textcolor{preprocessor}{\#ifdef\ SECURE\_ZERO}}
-\DoxyCodeLine{00332\ \ \ \ \ \ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(ptr,\ pool-\/>block\_size);\ \textcolor{comment}{//\ Zero\ out\ the\ old\ block}}
-\DoxyCodeLine{00333\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00334\ \ \ \ \ \ \ \textcolor{comment}{//\ Add\ the\ block\ back\ to\ the\ free\ list}}
-\DoxyCodeLine{00335\ \ \ \ \ \ \ *(uint8\_t\ **)ptr\ =\ pool-\/>free\_list;}
-\DoxyCodeLine{00336\ \ \ \ \ \ \ pool-\/>free\_list\ =\ (uint8\_t\ *)ptr;}
-\DoxyCodeLine{00337\ \ \ \ \ \ \ pool-\/>free\_count++\ ;}
-\DoxyCodeLine{00338\ \textcolor{preprocessor}{\#ifdef\ SECURE\_ZERO}}
-\DoxyCodeLine{00339\ \ \ \ \ \ \ \textcolor{comment}{//\ Zero\ out\ the\ block\ for\ security}}
-\DoxyCodeLine{00340\ \ \ \ \ \ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(ptr,\ pool-\/>block\_size);}
-\DoxyCodeLine{00341\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00342\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00343\ \ \ pool-\/>miss\_total++;}
-\DoxyCodeLine{00344\ \ \ pool-\/>miss\_bytes+=size;}
-\DoxyCodeLine{00345\ \ \ pool-\/>alloc\_total+=size;}
-\DoxyCodeLine{00346\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00347\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ new\_ptr;}
-\DoxyCodeLine{00348\ \ \ \ \ \}}
-\DoxyCodeLine{00349\ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
-\DoxyCodeLine{00350\ \textcolor{preprocessor}{\#ifdef\ FALLBACK}}
-\DoxyCodeLine{00351\ \ \ \ \ \textcolor{comment}{//\ Handle\ large\ allocations}}
-\DoxyCodeLine{00352\ \ \ \ \ \textcolor{keywordflow}{return}\ realloc(ptr,\ size);}
-\DoxyCodeLine{00353\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00354\ \ \ \ \ pool-\/>miss\_total++;}
-\DoxyCodeLine{00355\ \ \ \ \ pool-\/>miss\_bytes+=size;}
-\DoxyCodeLine{00356\ \ \ \ \ pool-\/>alloc\_total+=size;}
-\DoxyCodeLine{00357\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00358\ \textcolor{preprocessor}{\#else}}
-\DoxyCodeLine{00359\ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
-\DoxyCodeLine{00360\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00361\ \ \ \}}
-\DoxyCodeLine{00362\ \}}
-\DoxyCodeLine{00363\ }
-\DoxyCodeLine{00373\ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{group__sfpool_ga17c30db6a18fb8c69502725ad5be655f}{sfpool\_contains}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *ptr)\ \{}
-\DoxyCodeLine{00374\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
-\DoxyCodeLine{00375\ \ \ \textcolor{keywordtype}{int}\ res\ =\ 0;}
-\DoxyCodeLine{00376\ \ \ \textcolor{keywordflow}{if}(\ \_is\_in\_pool(pool,ptr)\ )\ res\ =\ 1;}
-\DoxyCodeLine{00377\ \ \ \textcolor{keywordflow}{return}\ res;}
-\DoxyCodeLine{00378\ \}}
-\DoxyCodeLine{00379\ }
-\DoxyCodeLine{00380\ }
-\DoxyCodeLine{00389\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfpool_ga189d738e89bb18e982baa7c56f48f283}{sfpool\_status}}(sfpool\_t\ *restrict\ p)\ \{}
-\DoxyCodeLine{00390\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}\(\backslash\)n🌊\ sfpool:\ \%u\ blocks\ \%u\ B\ each\(\backslash\)n"{}},}
-\DoxyCodeLine{00391\ \ \ \ \ \ \ \ \ \ \ p-\/>total\_blocks,\ p-\/>block\_size);}
-\DoxyCodeLine{00392\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
-\DoxyCodeLine{00393\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}🌊\ Total:\ \ \%lu\ K\(\backslash\)n"{}},}
-\DoxyCodeLine{00394\ \ \ \ \ \ \ \ \ \ \ p-\/>alloc\_total/1024);}
-\DoxyCodeLine{00395\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}🌊\ Misses:\ \%lu\ K\ (\%u\ calls)\(\backslash\)n"{}},p-\/>miss\_bytes/1024,p-\/>miss\_total);}
-\DoxyCodeLine{00396\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}🌊\ Hits:\ \ \ \%lu\ K\ (\%u\ calls)\(\backslash\)n"{}},p-\/>hits\_bytes/1024,p-\/>hits\_total);}
-\DoxyCodeLine{00397\ \textcolor{preprocessor}{\#endif}}
-\DoxyCodeLine{00398\ \}}
-\DoxyCodeLine{00399\ }
- \textcolor{comment}{// End of sfpool group}\DoxyCodeLine{00401\ }
-\DoxyCodeLine{00402\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00320\ \ \ \textcolor{keywordflow}{if}\ (size\ ==\ 0)\ \{}
+\DoxyCodeLine{00321\ \ \ \ \ \mbox{\hyperlink{group__sfpool_ga6f0da3366af27a351a26dc702d7dd3cf}{sfpool\_free}}(pool,\ ptr);}
+\DoxyCodeLine{00322\ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00323\ \ \ \}}
+\DoxyCodeLine{00324\ \ \ \textcolor{keywordflow}{if}\ (\_is\_in\_pool((sfpool\_t*)pool,ptr))\ \{}
+\DoxyCodeLine{00325\ \ \ \ \ \textcolor{keywordflow}{if}\ (size\ <=\ pool-\/>block\_size)\ \{}
+\DoxyCodeLine{00326\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ pool-\/>hits\_total++;}
+\DoxyCodeLine{00328\ \ \ \ \ \ \ pool-\/>hits\_bytes+=size;}
+\DoxyCodeLine{00329\ \ \ \ \ \ \ pool-\/>alloc\_total+=size;}
+\DoxyCodeLine{00330\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00331\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ ptr;\ \textcolor{comment}{//\ No\ need\ to\ reallocate}}
+\DoxyCodeLine{00332\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00333\ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ *new\_ptr\ =\ malloc(size);}
+\DoxyCodeLine{00334\ \ \ \ \ \ \ memcpy(new\_ptr,\ ptr,\ pool-\/>block\_size);\ \textcolor{comment}{//\ Copy\ only\ BLOCK\_SIZE\ bytes}}
+\DoxyCodeLine{00335\ \textcolor{preprocessor}{\#ifdef\ SECURE\_ZERO}}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(ptr,\ pool-\/>block\_size);\ \textcolor{comment}{//\ Zero\ out\ the\ old\ block}}
+\DoxyCodeLine{00337\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00338\ \ \ \ \ \ \ \textcolor{comment}{//\ Add\ the\ block\ back\ to\ the\ free\ list}}
+\DoxyCodeLine{00339\ \ \ \ \ \ \ *(uint8\_t\ **)ptr\ =\ pool-\/>free\_list;}
+\DoxyCodeLine{00340\ \ \ \ \ \ \ pool-\/>free\_list\ =\ (uint8\_t\ *)ptr;}
+\DoxyCodeLine{00341\ \ \ \ \ \ \ pool-\/>free\_count++\ ;}
+\DoxyCodeLine{00342\ \textcolor{preprocessor}{\#ifdef\ SECURE\_ZERO}}
+\DoxyCodeLine{00343\ \ \ \ \ \ \ \textcolor{comment}{//\ Zero\ out\ the\ block\ for\ security}}
+\DoxyCodeLine{00344\ \ \ \ \ \ \ \mbox{\hyperlink{group__sfutil_ga4ecebc050a5a2cea95df524ad32c25df}{sfutil\_zero}}(ptr,\ pool-\/>block\_size);}
+\DoxyCodeLine{00345\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00346\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00347\ \ \ pool-\/>miss\_total++;}
+\DoxyCodeLine{00348\ \ \ pool-\/>miss\_bytes+=size;}
+\DoxyCodeLine{00349\ \ \ pool-\/>alloc\_total+=size;}
+\DoxyCodeLine{00350\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00351\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ new\_ptr;}
+\DoxyCodeLine{00352\ \ \ \ \ \}}
+\DoxyCodeLine{00353\ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00354\ \textcolor{preprocessor}{\#ifdef\ FALLBACK}}
+\DoxyCodeLine{00355\ \ \ \ \ \textcolor{comment}{//\ Handle\ large\ allocations}}
+\DoxyCodeLine{00356\ \ \ \ \ \textcolor{keywordflow}{return}\ realloc(ptr,\ size);}
+\DoxyCodeLine{00357\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00358\ \ \ \ \ pool-\/>miss\_total++;}
+\DoxyCodeLine{00359\ \ \ \ \ pool-\/>miss\_bytes+=size;}
+\DoxyCodeLine{00360\ \ \ \ \ pool-\/>alloc\_total+=size;}
+\DoxyCodeLine{00361\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00362\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00363\ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00364\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00365\ \ \ \}}
+\DoxyCodeLine{00366\ \}}
+\DoxyCodeLine{00367\ }
+\DoxyCodeLine{00377\ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{group__sfpool_ga17c30db6a18fb8c69502725ad5be655f}{sfpool\_contains}}(\textcolor{keywordtype}{void}\ *restrict\ opaque,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *ptr)\ \{}
+\DoxyCodeLine{00378\ \ \ sfpool\_t\ *pool\ =\ (sfpool\_t*)opaque;}
+\DoxyCodeLine{00379\ \ \ \textcolor{keywordtype}{int}\ res\ =\ 0;}
+\DoxyCodeLine{00380\ \ \ \textcolor{keywordflow}{if}(\ \_is\_in\_pool(pool,ptr)\ )\ res\ =\ 1;}
+\DoxyCodeLine{00381\ \ \ \textcolor{keywordflow}{return}\ res;}
+\DoxyCodeLine{00382\ \}}
+\DoxyCodeLine{00383\ }
+\DoxyCodeLine{00384\ }
+\DoxyCodeLine{00393\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__sfpool_ga189d738e89bb18e982baa7c56f48f283}{sfpool\_status}}(sfpool\_t\ *restrict\ p)\ \{}
+\DoxyCodeLine{00394\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}\(\backslash\)n🌊\ sfpool:\ \%u\ blocks\ \%u\ B\ each\(\backslash\)n"{}},}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ \ \ p-\/>total\_blocks,\ p-\/>block\_size);}
+\DoxyCodeLine{00396\ \textcolor{preprocessor}{\#ifdef\ PROFILING}}
+\DoxyCodeLine{00397\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}🌊\ Total:\ \ \%lu\ K\(\backslash\)n"{}},}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ \ \ p-\/>alloc\_total/1024);}
+\DoxyCodeLine{00399\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}🌊\ Misses:\ \%lu\ K\ (\%u\ calls)\(\backslash\)n"{}},p-\/>miss\_bytes/1024,p-\/>miss\_total);}
+\DoxyCodeLine{00400\ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}🌊\ Hits:\ \ \ \%lu\ K\ (\%u\ calls)\(\backslash\)n"{}},p-\/>hits\_bytes/1024,p-\/>hits\_total);}
+\DoxyCodeLine{00401\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00402\ \}}
+\DoxyCodeLine{00403\ }
+ \textcolor{comment}{// End of sfpool group}\DoxyCodeLine{00405\ }
+\DoxyCodeLine{00406\ \textcolor{preprocessor}{\#endif}}
 
 \end{DoxyCode}
