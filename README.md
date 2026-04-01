@@ -74,14 +74,17 @@ implementations for secure allocation and free.
 There is a makefile target in this repository running tests with the
 address sanitizer: just type `make check`.
 
-To run these tests inside your source you can always do:
+For the standalone stress test you can also build and run it directly:
 
-    gcc -D SFPOOL_TEST -o sfpool_test sfpool.c
+    gcc -Wall -Wextra -g -fsanitize=address -fsanitize=undefined -I. sfpool_test.c -o sfpool_test
     time ./sfpool_test
 
 The test suite will allocate and deallocate memory in various patterns
 to simulate different usage scenarios and assert the correctness of
 the memory management.
+
+The most useful local commands are `make sfpool_test`, `make check`,
+and `make check-lua`.
 
 Additional tests are available: `make wasm` builds and runs the
 test as a WASM binary when `EMSDK` is available and pointing to an
