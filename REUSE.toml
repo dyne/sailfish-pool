@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 version = 1
-SPDX-PackageName = "fastmempool32"
+SPDX-PackageName = "sailfish-pool"
 SPDX-PackageSupplier = "Denis Roio <jaromil@dyne.org>"
-SPDX-PackageDownloadLocation = "https://github.com/dyne/fastmempool32"
+SPDX-PackageDownloadLocation = "https://github.com/dyne/sailfish-pool"
 
 [[annotations]]
 path = [
