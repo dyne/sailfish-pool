@@ -61,6 +61,34 @@ static void test_free_list_relink(sfpool_t *pool) {
   sfpool_free(pool, next);
 }
 
+static void test_init_validation(void) {
+  sfpool_t invalid_pool;
+  sfpool_t valid_pool;
+  size_t valid_blocksize = sizeof(void*);
+
+  assert(sfpool_init(NULL, 4, valid_blocksize) == 0);
+
+  assert(sfpool_init(&invalid_pool, 0, valid_blocksize) == 0);
+  assert(invalid_pool.buffer == NULL);
+  assert(invalid_pool.data == NULL);
+  assert(invalid_pool.total_blocks == 0);
+  assert(invalid_pool.block_size == 0);
+
+  assert(sfpool_init(&invalid_pool, 4, 1) == 0);
+  assert(sfpool_init(&invalid_pool, 4, 2) == 0);
+  assert(sfpool_init(&invalid_pool, 4, 4) == 0);
+  assert(invalid_pool.buffer == NULL);
+
+  assert(sfpool_init(&invalid_pool, SIZE_MAX, valid_blocksize) == 0);
+  assert(invalid_pool.buffer == NULL);
+
+  assert(sfpool_init(&valid_pool, 4, valid_blocksize) == 4 * valid_blocksize);
+  assert(valid_pool.buffer != NULL);
+  assert(valid_pool.total_blocks == 4);
+  assert(valid_pool.block_size == valid_blocksize);
+  sfpool_teardown(&valid_pool);
+}
+
 int main(int argc, char **argv) {
   srand(time(NULL));
   fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
@@ -70,6 +98,7 @@ int main(int argc, char **argv) {
   int blocksize = atoi(argv[2]);
   if(!blocksize) blocksize = 256;
 
+  test_init_validation();
   sfpool_init(pool, blocknum, blocksize);
   test_free_list_relink(pool);
 
