@@ -37,7 +37,7 @@ Change: Replace the current implementation with a simple, portable full-range wi
 Tests: Add a small targeted test that fills a non-multiple-of-four buffer with non-zero bytes, calls =sfutil_zero()=, and asserts that every byte became zero.
 Done when: Secure wiping clears the complete requested range and the test covers an odd-sized buffer.
 
-** WIP [#B] Make FALLBACK semantics internally consistent
+** DONE [#B] Make FALLBACK semantics internally consistent
 Why: =sfpool_malloc()= always falls back to system =malloc()=, while =sfpool_free()= and =sfpool_realloc()= only support heap-backed pointers when =FALLBACK= is enabled. The macro currently describes a mode that the code does not enforce consistently.
 Change: Decide the contract first. Either make fallback unconditional and remove the conditional branches/macros, or fully honor =FALLBACK= across allocation, free, and realloc. Prefer the simpler contract if there is no real use case for disabling fallback. Update comments and README text to match the chosen behavior.
 Tests: Run the default build and, if fallback remains configurable, add one compile/run case with fallback disabled to prove the behavior is coherent.

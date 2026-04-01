@@ -22,7 +22,6 @@
 
 #include <sfpool.h>
 
-#if defined(FALLBACK)
 #include <assert.h>
 #include <time.h>
 
@@ -153,5 +152,3 @@ int main(int argc, char **argv) {
   fprintf(stdout,"Sailfish Pool test passed successfully.\n");
   return 0;
 }
-
-#endif
