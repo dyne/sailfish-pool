@@ -126,24 +126,26 @@ void *sfutil_memalign(const void* ptr) {
  */
 void *sfutil_secalloc(size_t size) {
 	// add bytes to every allocation to support alignment
+	size_t alloc_size = size + ptr_align;
 	void *res = NULL;
 #if defined(__EMSCRIPTEN__)
-	res = (uint8_t *)malloc(size+ptr_align);
+	res = (uint8_t *)malloc(alloc_size);
 #elif defined(_WIN32)
-	res = VirtualAlloc(NULL, size+ptr_align,
+	res = VirtualAlloc(NULL, alloc_size,
 					   MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 #elif defined(__APPLE__)
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE;
-	res = mmap(NULL, size, PROT_READ | PROT_WRITE, flags, -1, 0);
-	mlock(res, size);
+	res = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+	if (res == MAP_FAILED) return NULL;
+	mlock(res, alloc_size);
 #else // assume POSIX
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE;
 	struct rlimit rl;
 	if (getrlimit(RLIMIT_MEMLOCK, &rl) == 0)
-		if(size<=rl.rlim_cur) flags |= MAP_LOCKED;
-	res = mmap(NULL, size, PROT_READ | PROT_WRITE, flags, -1, 0);
-#endif
+		if(alloc_size<=rl.rlim_cur) flags |= MAP_LOCKED;
+	res = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, flags, -1, 0);
 	if (res == MAP_FAILED) return NULL;
+#endif
 	return res;
 }
 
@@ -156,12 +158,13 @@ void *sfutil_secalloc(size_t size) {
  * @param size Size of the memory block in bytes.
  */
 void sfutil_secfree(void *ptr, size_t size) {
+	size_t alloc_size = size + ptr_align;
 #if defined(__EMSCRIPTEN__)
 	free(ptr);
 #elif defined(_WIN32)
 	VirtualFree(ptr, 0, MEM_RELEASE);
 #else // Posix
-	munmap(ptr, size +ptr_align);
+	munmap(ptr, alloc_size);
 #endif
 }
 
