@@ -46,7 +46,6 @@
 
 // Configuration
 #define SECURE_ZERO // Enable secure zeroing
-#define FALLBACK   // Enable fallback to system alloc
 #define PROFILING // Profile most used sizes allocated
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__ppc64__) || defined(__LP64__)
@@ -288,7 +287,7 @@ static inline void *sfpool_malloc(void *restrict opaque, const size_t size) {
  * @brief Frees memory allocated from the pool.
  *
  * This function frees memory that was allocated from the pool. If the memory was not allocated
- * from the pool, it falls back to system free (if enabled).
+ * from the pool, it falls back to system free.
  *
  * @param opaque Pointer to the memory pool structure.
  * @param ptr Pointer to the memory block to free.
@@ -307,9 +306,7 @@ static inline void sfpool_free(void *restrict opaque, void *ptr) {
     pool->free_count++ ;
     return;
   } else {
-#ifdef FALLBACK
     free(ptr);
-#endif
   }
 }
 
@@ -363,16 +360,12 @@ static inline void *sfpool_realloc(void *restrict opaque, void *ptr, const size_
       return new_ptr;
     }
   } else {
-#ifdef FALLBACK
     // Handle large allocations
     return realloc(ptr, size);
 #ifdef PROFILING
     pool->miss_total++;
     pool->miss_bytes+=size;
     pool->alloc_total+=size;
-#endif
-#else
-    return NULL;
 #endif
   }
 }
