@@ -48,6 +48,10 @@ to accommodate these growing requirements.
 To use the custom memory manager in your project, include `sfpool.h`
 and use the provided functions.
 
+The header includes its own implementation and uses internal linkage,
+so it is safe to include from multiple translation units in the same
+program.
+
 ### High Level API
 
 The main entry point is the [🌊 High Level API documented
