@@ -1,24 +1,21 @@
 var indexSectionsWithContent =
 {
   0: "acfhilpqsu🌊",
-  1: "s",
-  2: "ahilu",
-  3: "ps🌊"
+  1: "ahilu",
+  2: "ps🌊"
 };
 
 var indexSectionNames =
 {
   0: "all",
-  1: "functions",
-  2: "groups",
-  3: "pages"
+  1: "groups",
+  2: "pages"
 };
 
 var indexSectionLabels =
 {
   0: "All",
-  1: "Functions",
-  2: "Modules",
-  3: "Pages"
+  1: "Modules",
+  2: "Pages"
 };
 

@@ -115,6 +115,7 @@ Intended use case</h2>
 <h2><a class="anchor" id="autotoc_md2"></a>
 Usage</h2>
 <p>To use the custom memory manager in your project, include <code><a class="el" href="sfpool_8h_source.html">sfpool.h</a></code> and use the provided functions.</p>
+<p>The header includes its own implementation and uses internal linkage, so it is safe to include from multiple translation units in the same program.</p>
 <h3><a class="anchor" id="autotoc_md3"></a>
 High Level API</h3>
 <p>The main entry point is the <a href="https://dyne.org/sailfish-pool/group__sfpool.html">🌊 High Level API documented here</a> and constituted by init/teardown functions initalizing an sfpool context and malloc/free/realloc functions for common memory operations. Also a function to verify if a pointer is contained in the pool and one to report status.</p>
@@ -124,9 +125,10 @@ Utilities API</h3>
 <h2><a class="anchor" id="autotoc_md5"></a>
 Quality Assurance</h2>
 <p>There is a makefile target in this repository running tests with the address sanitizer: just type <code>make check</code>.</p>
-<p>To run these tests inside your source you can always do: </p><pre class="fragment">gcc -D SFPOOL_TEST -o sfpool_test sfpool.c
+<p>For the standalone stress test you can also build and run it directly: </p><pre class="fragment">gcc -Wall -Wextra -g -fsanitize=address -fsanitize=undefined -I. sfpool_test.c -o sfpool_test
 time ./sfpool_test
 </pre><p> The test suite will allocate and deallocate memory in various patterns to simulate different usage scenarios and assert the correctness of the memory management.</p>
+<p>The most useful local commands are <code>make sfpool_test</code>, <code>make check</code>, and <code>make check-lua</code>.</p>
 <p>Additional tests are available: <code>make wasm</code> builds and runs the test as a WASM binary when <code>EMSDK</code> is available and pointing to an Emscripten installation.</p>
 <p>Then the <code>make check-lua</code> target downloads the latest stable Lua codebase and compiles it applying sfpool as its main memory allocator, then runs the Lua test suite.</p>
 <p>All tests are constantly verified in <a href="https://github.com/dyne/sailfish-pool/actions">continuous integration by Github actions</a>.</p>
