@@ -319,7 +319,8 @@ static inline void sfpool_free(void *restrict opaque, void *ptr) {
  * @brief Reallocates memory from the pool.
  *
  * This function reallocates memory from the pool. If the new size is larger than the block size,
- * it allocates new memory using system malloc and copies the old data.
+ * it allocates new memory using system malloc and copies the old data. If that grow allocation
+ * fails, the original pool allocation is left untouched and NULL is returned.
  *
  * @param opaque Pointer to the memory pool structure.
  * @param ptr Pointer to the memory block to reallocate.
@@ -345,6 +346,7 @@ static inline void *sfpool_realloc(void *restrict opaque, void *ptr, const size_
       return ptr; // No need to reallocate
     } else {
       void *new_ptr = malloc(size);
+      if (new_ptr == NULL) return NULL;
       memcpy(new_ptr, ptr, pool->block_size); // Copy only BLOCK_SIZE bytes
 #ifdef SECURE_ZERO
       // Zero the old pool block before relinking it into the free list.

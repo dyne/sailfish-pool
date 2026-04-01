@@ -25,13 +25,13 @@ Effort: 1 day
 Goal: Remove the remaining undefined behavior paths in =malloc/free/realloc/zero= without broadening the design.
 Notes: Keep behavior unsurprising for existing callers. If any branch semantics change, update the relevant Doxygen comments in the same L2.
 
-** WIP [#A] Make pool-to-heap realloc failure-safe
+** DONE [#A] Make pool-to-heap realloc failure-safe
 Why: When reallocating a pool-owned block to a larger size, the code calls =malloc(size)= and immediately copies into the result. If =malloc()= fails, the current path dereferences =NULL= and can also lose the original allocation semantics.
 Change: In the pool-to-heap branch of =sfpool_realloc()=, check the result of =malloc()= before copying or releasing the old pool block. On failure, return =NULL= and leave the original block untouched so the caller can still free or reuse it. Only update profiling counters on a successful transition.
 Tests: Add a deterministic failure case by requesting an impossibly large size, e.g. =SIZE_MAX=, from a pool-owned pointer. Assert that the call returns =NULL= and that the original pointer is still recognized by =sfpool_contains()= and remains safe to free.
 Done when: A failed grow-realloc no longer crashes, preserves the original block, and the regression is covered by a test.
 
-** TODO [#B] Zero trailing bytes in secure wiping
+** WIP [#B] Zero trailing bytes in secure wiping
 Why: =sfutil_zero()= currently clears only =size >> 2= 32-bit words. For sizes not divisible by four, the last 1-3 bytes remain untouched, which breaks the stated secure-zeroing intent.
 Change: Replace the current implementation with a simple, portable full-range wipe that clears every byte. If retaining the word-at-a-time fast path, add a tail pass for the remainder. Update the doc-comment so it accurately describes the implementation.
 Tests: Add a small targeted test that fills a non-multiple-of-four buffer with non-zero bytes, calls =sfutil_zero()=, and asserts that every byte became zero.
