@@ -143,6 +143,7 @@ void *sfutil_secalloc(size_t size) {
 		if(size<=rl.rlim_cur) flags |= MAP_LOCKED;
 	res = mmap(NULL, size, PROT_READ | PROT_WRITE, flags, -1, 0);
 #endif
+	if (res == MAP_FAILED) return NULL;
 	return res;
 }
 
@@ -284,14 +285,14 @@ void sfpool_free(void *restrict opaque, void *ptr) {
   sfpool_t *pool = (sfpool_t*)opaque;
   if (ptr == NULL) return; // Freeing NULL is a no-op
   if (_is_in_pool(pool,ptr)) {
+#ifdef SECURE_ZERO
+    // Zero the user-visible contents before restoring the free-list link.
+    sfutil_zero(ptr, pool->block_size);
+#endif
     // Add the block back to the free list
     *(uint8_t **)ptr = pool->free_list;
     pool->free_list = (uint8_t *)ptr;
     pool->free_count++ ;
-#ifdef SECURE_ZERO
-    // Zero out the block for security
-    sfutil_zero(ptr, pool->block_size);
-#endif
     return;
   } else {
 #ifdef FALLBACK
@@ -333,16 +334,13 @@ void *sfpool_realloc(void *restrict opaque, void *ptr, const size_t size) {
       void *new_ptr = malloc(size);
       memcpy(new_ptr, ptr, pool->block_size); // Copy only BLOCK_SIZE bytes
 #ifdef SECURE_ZERO
-      sfutil_zero(ptr, pool->block_size); // Zero out the old block
+      // Zero the old pool block before relinking it into the free list.
+      sfutil_zero(ptr, pool->block_size);
 #endif
       // Add the block back to the free list
       *(uint8_t **)ptr = pool->free_list;
       pool->free_list = (uint8_t *)ptr;
       pool->free_count++ ;
-#ifdef SECURE_ZERO
-      // Zero out the block for security
-      sfutil_zero(ptr, pool->block_size);
-#endif
 #ifdef PROFILING
   pool->miss_total++;
   pool->miss_bytes+=size;
