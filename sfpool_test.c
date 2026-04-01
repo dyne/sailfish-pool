@@ -64,6 +64,7 @@ static void test_init_validation(void) {
   sfpool_t invalid_pool;
   sfpool_t valid_pool;
   size_t valid_blocksize = sizeof(void*);
+  size_t invalid_blocksize = valid_blocksize >> 1;
 
   assert(sfpool_init(NULL, 4, valid_blocksize) == 0);
 
@@ -75,7 +76,9 @@ static void test_init_validation(void) {
 
   assert(sfpool_init(&invalid_pool, 4, 1) == 0);
   assert(sfpool_init(&invalid_pool, 4, 2) == 0);
-  assert(sfpool_init(&invalid_pool, 4, 4) == 0);
+  if (invalid_blocksize >= 4) {
+    assert(sfpool_init(&invalid_pool, 4, invalid_blocksize) == 0);
+  }
   assert(invalid_pool.buffer == NULL);
 
   assert(sfpool_init(&invalid_pool, SIZE_MAX, valid_blocksize) == 0);
