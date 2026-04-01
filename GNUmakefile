@@ -25,7 +25,9 @@ cc_emsdk_optimizations := -g -sUSE_SDL=0 -sEVAL_CTORS=1
 emsdk_cflags  := ${cc_emsdk_optimizations}
 emsdk_ldflags := ${ld_emsdk_optimizations} ${ld_emsdk_settings}
 
-sfpool_test:
+.PHONY: check check-lua wasm clean
+
+sfpool_test: sfpool_test.c sfpool.h
 	$(info Build sfpool test.)
 	$(CC) $(CFLAGS) -I. sfpool_test.c -o sfpool_test
 

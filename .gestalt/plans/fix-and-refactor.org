@@ -20,7 +20,7 @@ Change: Choose one minimal model and apply it consistently. Preferred options ar
 Tests: Add a compile-and-link smoke test with two tiny translation units that both include =sfpool.h=. The test only needs to prove that the selected header-only model works; it does not need runtime assertions.
 Done when: Two separate C files can include =sfpool.h= and link cleanly, and the intended inclusion model is explicit in code and docs.
 
-* WIP [#A] Close remaining allocator correctness gaps
+* DONE [#A] Close remaining allocator correctness gaps
 Effort: 1 day
 Goal: Remove the remaining undefined behavior paths in =malloc/free/realloc/zero= without broadening the design.
 Notes: Keep behavior unsurprising for existing callers. If any branch semantics change, update the relevant Doxygen comments in the same L2.
@@ -43,18 +43,18 @@ Change: Decide the contract first. Either make fallback unconditional and remove
 Tests: Run the default build and, if fallback remains configurable, add one compile/run case with fallback disabled to prove the behavior is coherent.
 Done when: Allocation, free, and realloc agree on fallback ownership rules, and the documented behavior matches the implementation.
 
-* TODO [#B] Align tests, build targets, and repository metadata with reality
+* WIP [#B] Align tests, build targets, and repository metadata with reality
 Effort: 0.5 day
 Goal: Remove stale commands and mismatched metadata so future fixes are easier to verify and consume.
 Notes: These changes are lower priority than allocator safety, but they reduce wasted debugging time and should be kept small and mechanical.
 
-** TODO [#B] Fix the =sfpool_test= build target so it rebuilds correctly
+** DONE [#B] Fix the =sfpool_test= build target so it rebuilds correctly
 Why: =make sfpool_test= can report “up to date” after =make clean= because the target name matches the output file but has no explicit prerequisite graph. This makes local verification unreliable.
 Change: Introduce a real file rule for =sfpool_test= with its source dependency, or rename the phony wrapper target and keep the binary as the file target. Do not add new tools; keep this as a plain Make fix.
 Tests: Run =make clean=, then =make sfpool_test= twice. The first run must compile the binary. The second run should be a no-op only if the binary actually exists and is current.
 Done when: The make target behavior matches the file system state and developers can rely on the documented build command.
 
-** TODO [#B] Refresh README examples to match the header-only repository
+** WIP [#B] Refresh README examples to match the header-only repository
 Why: The README still tells users to compile =sfpool.c=, which no longer exists. That is the first command a new user may copy, so it should be correct.
 Change: Replace the stale example with the current working compile command for the header-only setup. While editing the QA section, mention the most useful local verification commands and avoid overexplaining the workflow.
 Tests: Follow the README command literally in a clean tree and confirm it builds and runs.
