@@ -54,13 +54,13 @@ Change: Introduce a real file rule for =sfpool_test= with its source dependency,
 Tests: Run =make clean=, then =make sfpool_test= twice. The first run must compile the binary. The second run should be a no-op only if the binary actually exists and is current.
 Done when: The make target behavior matches the file system state and developers can rely on the documented build command.
 
-** WIP [#B] Refresh README examples to match the header-only repository
+** DONE [#B] Refresh README examples to match the header-only repository
 Why: The README still tells users to compile =sfpool.c=, which no longer exists. That is the first command a new user may copy, so it should be correct.
 Change: Replace the stale example with the current working compile command for the header-only setup. While editing the QA section, mention the most useful local verification commands and avoid overexplaining the workflow.
 Tests: Follow the README command literally in a clean tree and confirm it builds and runs.
 Done when: The README’s copy-paste build example works exactly as written.
 
-** TODO [#C] Clean metadata drift in CI and repo housekeeping files
+** WIP [#C] Clean metadata drift in CI and repo housekeeping files
 Why: A few small files still point to the old repository layout or old project names. Examples already observed are the cpplint target pointing at a non-existent =src/= tree, stale package metadata in =REUSE.toml=, and an outdated binary name in =.gitignore=.
 Change: Update CI paths and housekeeping metadata to reflect the current repository shape and naming. Keep this strictly mechanical: no behavior changes beyond pointing the files at the right locations.
 Tests: Re-read the changed metadata files after editing and, where possible, run the affected local command or a simple grep check to confirm the referenced paths now exist.
