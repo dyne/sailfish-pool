@@ -96,15 +96,14 @@ static inline bool _is_in_pool(sfpool_t *pool, const void *ptr) {
 /**
  * @brief Zeroes out a block of memory.
  *
- * This function sets a block of memory to zero using 32-bit writes for efficiency.
+ * This function sets every byte in a block of memory to zero.
  *
  * @param ptr Pointer to the memory block to zero out.
  * @param size Size of the memory block in bytes.
  */
 static inline void sfutil_zero(void *ptr, uint32_t size) {
-  register uint32_t *p = (uint32_t*)ptr; // use 32bit pointer
-  register uint32_t s = (size>>2); // divide counter by 4
-  while (s--) *p++ = 0x0; // hit the road jack
+  volatile uint8_t *p = (volatile uint8_t*)ptr;
+  while (size--) *p++ = 0;
 }
 
 /**
