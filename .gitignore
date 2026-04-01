@@ -1,2 +1,7 @@
-fastalloc32_test
+sfpool_test
+test_lua
+sfpool_multi
+sfpool_realloc_oom_test
+sfutil_zero_test
+sfpool_fallback_test
 *.o

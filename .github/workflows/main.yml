@@ -25,7 +25,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-check
-          targets: --recursive src
+          targets: sfpool.h sfpool_test.c test_lua.c
           level: warning
           flags: --linelength=120 # Optional
           filter: "-readability/braces\
