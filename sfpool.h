@@ -188,7 +188,12 @@ void sfutil_secfree(void *ptr, size_t size) {
  * @return Total size of the memory pool in bytes, or 0 on failure.
  */
 size_t sfpool_init(sfpool_t *pool, size_t nmemb, size_t blocksize) {
+  if (pool == NULL) return 0;
+  memset(pool, 0, sizeof(sfpool_t));
+  if (nmemb == 0) return 0;
+  if (blocksize < sizeof(void*)) return 0;
   if((blocksize & (blocksize - 1)) != 0) return 0;
+  if (nmemb > (SIZE_MAX / blocksize)) return 0;
   // SFPool blocksize must be a power of two
   size_t totalsize = nmemb * blocksize;
   pool->buffer = sfutil_secalloc(totalsize);
