@@ -34,6 +34,33 @@
 #define MAX_ALLOCATION_SIZE 256
 #endif
 
+static void test_free_list_relink(sfpool_t *pool) {
+  if (pool->total_blocks < 3) return;
+
+  void *first = sfpool_malloc(pool, 1);
+  void *second = sfpool_malloc(pool, 1);
+  void *reused = NULL;
+  void *next = NULL;
+
+  assert(first != NULL);
+  assert(second != NULL);
+  assert(sfpool_contains(pool, first) == 1);
+  assert(sfpool_contains(pool, second) == 1);
+
+  sfpool_free(pool, first);
+
+  reused = sfpool_malloc(pool, 1);
+  next = sfpool_malloc(pool, 1);
+
+  assert(reused == first);
+  assert(next != NULL);
+  assert(sfpool_contains(pool, next) == 1);
+
+  sfpool_free(pool, reused);
+  sfpool_free(pool, second);
+  sfpool_free(pool, next);
+}
+
 int main(int argc, char **argv) {
   srand(time(NULL));
   fprintf(stderr,"Size of sfpool_t: %lu\n",sizeof(sfpool_t));
@@ -44,6 +71,7 @@ int main(int argc, char **argv) {
   if(!blocksize) blocksize = 256;
 
   sfpool_init(pool, blocknum, blocksize);
+  test_free_list_relink(pool);
 
   void *pointers[NUM_ALLOCATIONS];
 
